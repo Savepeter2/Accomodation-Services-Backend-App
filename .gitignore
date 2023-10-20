@@ -1,0 +1,16 @@
+__pycache__
+secret*.json
+test*
+.env
+.venv
+others/
+*.csv
+.DS_Store
+.prefectignore
+main-deployment.yaml
+logs
+*.json
+*.log
+*.db
+server/gettoken.config
+*.ipynb
