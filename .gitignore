@@ -2,7 +2,7 @@ __pycache__
 secret*.json
 test*
 .env
-.venv
+venv
 others/
 *.csv
 .DS_Store
