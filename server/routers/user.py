@@ -13,7 +13,7 @@ from app.utils import (
 )
 from app.deps import get_current_user
 from app.mailer_utils import send_token_email
-from schemas.user import UserSchema, UserUpdateSchema, EmailSchema
+from schemas.user import UserSchema, UserUpdateSchema, EmailSchema, ProfileUpdateSchema
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Literal
@@ -92,7 +92,7 @@ async def create_user(
         if success_mail == 'success':
             return {
             "status": "success",
-            "message": "Email verification has been sent successfully to your email, please kindly click on the link to verify your email",
+            "message": "Email verification link has been sent successfully to your email, please kindly click on the link to verify your email",
             "body": ""
         }
         
@@ -652,6 +652,59 @@ async def get_current_user_info(
             )
         else:
             raise e
+
+
+@router.patch("/user/{id}/profile", tags=["user"])
+async def update_user_profile(
+    id: int,
+    user: ProfileUpdateSchema,
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_user)
+):
+    """
+    Update a user profile
+        """
+    try:
+        check_user = db.query(User).filter(User.id == id == current_user.get('id')).first()
+        if not check_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "User does not exist",
+                    "body": ""
+                }
+            )
+        
+        check_user.first_name = user.first_name
+        check_user.last_name = user.last_name
+
+        db.commit()
+        db.refresh(check_user)
+        
+        return {
+            "status": "success",
+            "message": "User profile updated successfully",
+            "body": check_user
+        }
+    
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(f"Error updating user profile: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "status": "error",
+                    "message": "Internal server error",
+                    "body": str(e)
+                }
+            )
+        else:
+            raise e
+
+
+
+
 
 
 

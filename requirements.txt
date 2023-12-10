@@ -17,6 +17,12 @@
 # gunicorn==21.2.0
 # openai==0.28.1
 # uvicorn
+imageio[pyav]
+scikit-image
+matplotlib
+opencv-python
+pillow
+aiofiles
 fastapi-sessions
 python-decouple==3.8
 aioredis==2.0.1
