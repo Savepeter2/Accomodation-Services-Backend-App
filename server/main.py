@@ -34,23 +34,22 @@ except:
 BASEDIR = os.path.abspath(os.path.dirname(__file__))
 BASEDIR = os.path.join(BASEDIR, "app")
 Base.metadata.create_all(bind=engine)
+app = FastAPI()
 
-def my_app():
-    app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=methods,
+    allow_headers=headers,
+)
 
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=origins,
-        allow_credentials=True,
-        allow_methods=methods,
-        allow_headers=headers,
-    )
+app.include_router(user_router)
+app.include_router(acc_prov_router)
+app.include_router(explorer_router)
+app.include_router(admin_router)
 
-    app.include_router(user_router)
-    app.include_router(acc_prov_router)
-    app.include_router(explorer_router)
-    app.include_router(admin_router)
+app.mount("/static", StaticFiles(directory=BASEDIR+"\statics"), name="static")
 
-    app.mount("/static", StaticFiles(directory=BASEDIR+"\statics"), name="static")
-
-    return app
+# if __name__ == "__main__":
+#     uvicorn.run(app, host="0.0.0.0", port=8000)
