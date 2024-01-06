@@ -97,6 +97,8 @@ def get_user_info(user):
         "last_name": user.get('last_name'),
         "email": user.get('email'),
         "is_verified": user.get('is_verified'),
+        "profile": user.get('profile'),
+        "profile_pic": user.get('profile_picture'),
         "password": user.get('password')
     }
 

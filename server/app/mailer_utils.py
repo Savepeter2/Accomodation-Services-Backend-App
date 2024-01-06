@@ -19,19 +19,16 @@ MAIL_SERVER = config("MAIL_SERVER")
 MAIL_TLS = config("MAIL_TLS")
 MAIL_SSL = config("MAIL_SSL")
 
+
 config = ConnectionConfig(
     MAIL_USERNAME=MAIL_USER_NAME,
     MAIL_PASSWORD=MAIL_PASSWORD,
-    MAIL_FROM=MAIL_FROM,
     MAIL_PORT=MAIL_PORT,
+    MAIL_FROM=MAIL_FROM,
     MAIL_SERVER=MAIL_SERVER,
-    MAIL_TLS=True,
+    MAIL_TLS=False,
     MAIL_SSL=False,
-    # MAIL_SSL_TLS=False,
-    # MAIL_STARTTLS=True,
-    #TEMPLATE_FOLDER=Path(__file__).parent.parent/"templates",
     TEMPLATE_FOLDER=Path(__file__).parent/"templates/"
-
 )
 
 async def send_token_email(subject:str, email_to:EmailStr, body, template:str):

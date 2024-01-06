@@ -11,23 +11,29 @@ from app.utils import (
      generate_password_key
 
 )
+from app.acl import check_permission,valid_permissions
 from app.deps import get_current_user
 from app.mailer_utils import send_token_email
-from schemas.user import UserSchema, UserUpdateSchema, EmailSchema, ProfileUpdateSchema
+from schemas.user import UserSchema, UserUpdateSchema, EmailSchema, ProfileUpdateSchema, HasPermissionTo
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Literal
 from  app.model import User
 from fastapi.responses import JSONResponse
+from schemas.user import PROFILE_DATA_TYPE
+from fastapi import UploadFile, Form, File, Request
+from routers.acc_provider import image_upload
+from pydantic import EmailStr
 
 
 router = APIRouter()
 
 
 
-@router.post('/user/signup', tags =['user'])
+@router.post('/user/signup', tags =['User'])
 async def create_user(
     user: UserSchema,
+    request: Request,
     db: Session = Depends(get_db)
 ):
     try:
@@ -54,21 +60,11 @@ async def create_user(
                 }
             )
 
-        new_user = User(
-                first_name = user.first_name,
-                last_name = user.last_name,
-                email = user.email,
-                password = hashed_password
-        )
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
         token = email_token(user.email)
-        print(token)
 
         email_verification_endpoint = f'{API_ENDPOINT}/user/confirm-email/{token}'
         mail_body = {
-            'email': user.email,
+            'email': user.first_name,
             'project_name': PROJECT_NAME,
             'url': email_verification_endpoint
         }
@@ -79,24 +75,31 @@ async def create_user(
                                       template='email_verification.html')
         
         success_mail = mail_token['status']
-        # if success_mail == 'success':
-        #     db.add(new_user)
-        #     db.commit()
-        #     db.refresh(new_user)
+        if success_mail == 'success':
+            new_user = User(
+                first_name = user.first_name,
+                last_name = user.last_name,
+                email = user.email,
+                password = hashed_password,
+                profile = user.profile
+        )
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
 
-        #     return {
-        #     "status": "success",
-        #     "message": "User created successfully",
-        #     "body": get_user_info(new_user) | signJWT(user.email) | mail_token
-        # }
+            return {
+            "status": "success",
+            "message": "User created successfully",
+            "body": get_user_info(new_user) | signJWT(user.email) | mail_token
+        }
+
         if success_mail == 'success':
             return {
             "status": "success",
             "message": "Email verification link has been sent successfully to your email, please kindly click on the link to verify your email",
-            "body": ""
-        }
-        
-            
+        "body": ""
+            }
+
     except Exception as e:
         if not isinstance(e, HTTPException):
             logger.error(f"error creating user {e}")
@@ -112,7 +115,7 @@ async def create_user(
             raise e
 
 
-@router.get("/user/confirm-email/{token}", tags=["user"])
+@router.get("/user/confirm-email/{token}", tags=["User"])
 async def user_verification(
     token:str,
     db: Session = Depends(get_db)
@@ -180,7 +183,7 @@ async def user_verification(
             raise e
 
 
-@router.post('/user/resend-verification-email', tags=['user'])
+@router.post('/user/resend-verification-email', tags=['User'])
 async def resend_verification_email(
     email:str,
     db: Session = Depends(get_db)
@@ -244,7 +247,7 @@ async def resend_verification_email(
             raise e
         
 
-@router.post('/user/forgot-password', tags=['user'])
+@router.post('/user/forgot-password', tags=['User'])
 async def forgot_password(
     email: EmailSchema,
     db: Session = Depends(get_db)
@@ -305,7 +308,7 @@ async def forgot_password(
             raise e
 
 
-@router.post('/user/reset-password/', tags=['user'])
+@router.post('/user/reset-password/', tags=['User'])
 async def reset_password(
     email: EmailSchema,
     new_password: str,
@@ -373,7 +376,7 @@ async def reset_password(
             raise e
 
 
-@router.post('/user/login', tags = ['user'])
+@router.post('/user/login', tags = ['User'])
 async def user_login(
     login_data: OAuth2PasswordRequestForm = Depends(),
     db:Session = Depends(get_db)
@@ -421,7 +424,7 @@ async def user_login(
             raise e
 
 
-@router.post('/user/logout', tags=['user'])
+@router.post('/user/logout', tags=['User'])
 async def user_logout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -451,83 +454,83 @@ async def user_logout(
         else:
             raise e
         
-#updating the password of the user
-@router.patch('/user/update/{user_id}', tags=['user'])
-async def update_user(
-    user_id:int,
-    user:UserUpdateSchema,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):  
-    """
-    this endpoint is basically updating the password of the user
-    """
-    try:
-        user_to_update = db.query(User).filter(User.id == user_id).first()
+# #updating the password of the user
+# @router.patch('/user/update/{user_id}', tags=['user'])
+# async def update_user(
+#     user_id:int,
+#     user:UserUpdateSchema,
+#     current_user: User = Depends(get_current_user),
+#     db: Session = Depends(get_db)
+# ):  
+#     """
+#     this endpoint is basically updating the password of the user
+#     """
+#     try:
+#         user_to_update = db.query(User).filter(User.id == user_id).first()
 
-        if user_to_update is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "User does not exist",
-                    "body": ""
-                }
-            )
+#         if user_to_update is None:
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail={
+#                     "status": "error",
+#                     "message": "User does not exist",
+#                     "body": ""
+#                 }
+#             )
         
-        if not verify_password(user.old_password, user_to_update.password):
-            logger.error("user: Incorrect login details, old password is incorrect.")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Incorrect login details, old password is incorrect.",
-                    "body": ""
-                }
-            )
-        # hash_old_password = get_hashed_password(user.old_password)
-        elif verify_password(user.new_password, user_to_update.password):
-            logger.error("user: new password cannot be equal to old password.")
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "new password cannot be equal to old password.",
-                    "body": ""
-                }
-            )
+#         if not verify_password(user.old_password, user_to_update.password):
+#             logger.error("user: Incorrect login details, old password is incorrect.")
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail={
+#                     "status": "error",
+#                     "message": "Incorrect login details, old password is incorrect.",
+#                     "body": ""
+#                 }
+#             )
+#         # hash_old_password = get_hashed_password(user.old_password)
+#         elif verify_password(user.new_password, user_to_update.password):
+#             logger.error("user: new password cannot be equal to old password.")
+#             raise HTTPException(
+#                 status_code=status.HTTP_400_BAD_REQUEST,
+#                 detail={
+#                     "status": "error",
+#                     "message": "new password cannot be equal to old password.",
+#                     "body": ""
+#                 }
+#             )
         
-        hashed_password = get_hashed_password(user.new_password)
-        user_to_update.password = hashed_password
-        db.commit()
-        db.refresh(user_to_update)
+#         hashed_password = get_hashed_password(user.new_password)
+#         user_to_update.password = hashed_password
+#         db.commit()
+#         db.refresh(user_to_update)
 
-        return {
-            "status": "success",
-            "message": "User updated successfully",
-            "body": get_user_info(user_to_update)
-        }
+#         return {
+#             "status": "success",
+#             "message": "User updated successfully",
+#             "body": get_user_info(user_to_update)
+#         }
     
-    except Exception as e:
-        if not isinstance(e, HTTPException):
-            logger.error(f"user: Error updating user {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "status": "error",
-                    "message": "Error updating user",
-                    "body": str(e)
-                }
-            )
-        else:
-            raise e
-
-
-@router.delete('/user/delete/{user_id}', tags=['user'])
+#     except Exception as e:
+#         if not isinstance(e, HTTPException):
+#             logger.error(f"user: Error updating user {e}")
+#             raise HTTPException(
+#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+#                 detail={
+#                     "status": "error",
+#                     "message": "Error updating user",
+#                     "body": str(e)
+#                 }
+#             )
+#         else:
+#             raise e
+        
+@router.delete('/user/delete/{user_id}', tags=['User'])
 async def delete_user(
     user_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    permits: list = HasPermissionTo("delete"),
 ):
     try:
         user_to_delete = db.query(User).filter(User.id == user_id).first()
@@ -563,11 +566,12 @@ async def delete_user(
             raise e
 
 
-@router.get('/user/filter/{user_id}', tags=['user'])
+@router.get('/user/filter/{user_id}', tags=['User'])
 async def get_user(
     user_id: int,
     current_user: UserSchema = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+     permits: list = HasPermissionTo("view")
 ):
     try:
         user = db.query(User).filter(User.id == user_id).first()
@@ -600,10 +604,11 @@ async def get_user(
         else:
             raise e
 
-@router.get('/user/all', tags=['user'])
+@router.get('/user/all', tags=['User'])
 async def get_all_users(
     current_user: UserSchema = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    permits: list = HasPermissionTo("view_all")
 ):
     try:
         users = db.query(User).all()
@@ -627,10 +632,11 @@ async def get_all_users(
         else:
             raise e
 
-@router.get('/user/me', tags = ['user'])
+@router.get('/user/me', tags = ['User'])
 async def get_current_user_info(
     current_user: UserSchema = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    permits: list = HasPermissionTo("view")
 ):
     try:
         return {
@@ -654,18 +660,58 @@ async def get_current_user_info(
             raise e
 
 
-@router.patch("/user/{id}/profile", tags=["user"])
+@router.patch('/user/update_permission',  tags=["User"])
+async def update_permission(
+    email: EmailStr,
+    permission: valid_permissions = "user",
+    db: Session = Depends(get_db),
+    current_user: UserSchema = Depends(get_current_user),
+    permits: list = HasPermissionTo("update_permission")
+):
+
+    try:
+        user_to_update = db.query(User).filter(User.email == email).first()
+        user_to_update.principal = check_permission(permission)
+
+        db.commit()
+        db.refresh(user_to_update)
+
+        return {
+            "status": "success",
+            "message": "User permission updated successfully",
+            "body": user_to_update.__dict__
+        }
+
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(f"user: Error updating user permission {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "status": "error",
+                    "message": "Error updating user permission",
+                    "body": str(e)
+                }
+            )
+        else:
+            raise e
+
+@router.patch("/user/{id}/profile/update", tags=["User"])
 async def update_user_profile(
     id: int,
-    user: ProfileUpdateSchema,
+    first_name: str = Form(default=None),
+    last_name: str = Form(default=None),
+    profile_picture: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: UserSchema = Depends(get_current_user)
+    current_user: UserSchema = Depends(get_current_user),
+    permits: list = HasPermissionTo("update_user")
 ):
     """
-    Update a user profile
+    Update a user profile, for updating first name, last name and profile picture of the user[explorer]
         """
     try:
-        check_user = db.query(User).filter(User.id == id == current_user.get('id')).first()
+        check_user = db.query(User).filter(User.id == id).filter(id == current_user.get('id')).first()
+        print("current_user_id", current_user.get('id') )
         if not check_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -676,8 +722,19 @@ async def update_user_profile(
                 }
             )
         
-        check_user.first_name = user.first_name
-        check_user.last_name = user.last_name
+        if check_user.profile != "Explorer" and check_user.profile is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You are not an explorer, you cannot update your profile",
+                    "body": ""
+                }
+            )
+        image_name, thumbnail_name = await image_upload(profile_picture)
+        check_user.first_name = first_name
+        check_user.last_name = last_name
+        check_user.profile_picture = image_name
 
         db.commit()
         db.refresh(check_user)

@@ -1,6 +1,37 @@
 from pydantic import BaseModel, Field, EmailStr
 from typing import Literal, List
 import requests
+from app.acl import (
+    check_permission, all_acl_permission,
+    get_active_principals, check_acl
+)
+
+from fastapi_permissions import (
+    Allow,
+    Authenticated,
+    Deny,
+    Everyone,
+    configure_permissions,
+    list_permissions,
+)
+
+from fastapi import HTTPException, status
+
+permission_exception = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail={
+        "status": "error",
+        "message": "Insufficient permissions to perform action",
+        "body": None,
+    },
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
+
+Permission = configure_permissions(get_active_principals, permission_exception)
+def HasPermissionTo(permit): return Permission(
+    check_acl(permit), UserSchema().__acl__())
+
 
 PROFILE_DATA_TYPE = Literal["Explorer", "Service Provider", "Accomodation Provider"]
 
@@ -9,26 +40,37 @@ PROFILE_DATA_TYPE = Literal["Explorer", "Service Provider", "Accomodation Provid
 #         orm_mode = True
 
 class UserSchema(BaseModel):
-    id: int = Field(default=None)
     first_name: str = Field(default=None)
     last_name: str = Field(default=None)
-    email: EmailStr = Field(null=False, unique = True)
+    email: EmailStr = Field(null=False, unique = True, default = None)
     profile: PROFILE_DATA_TYPE = Field(default=None)
     password: str = Field(default=None)
     confirm_password: str = Field(default=None)
+    principal: str = Field(default=check_permission("user"))
+
 
     class Config:
         schema_extra = {
             "example": {
-                "id": 1,
                 "first_name": "John",
                 "last_name": "Doe",
-                "email": "johndoe@xyz.com",
+                "email": "johndoe@gmail.com",
                 "profile": ["Explorer","Service Provider", "Accomodation Provider"],
                 "password": "password",
                 "confirm_password": "password"
             }
             }
+        
+    def __acl__(self):
+        """ defines who can do what to the model instance
+        the function returns a list containing tuples in the form of
+        (Allow or Deny, principal identifier, permission name)
+        If a role is not listed (like "role:user") the access will be
+        automatically deny. It's like a (Deny, Everyone, All) is automatically
+        appended at the end.
+        """
+        return all_acl_permission
+
         
 class UserUpdateSchema(BaseModel):
     old_password: str = Field(default=None)

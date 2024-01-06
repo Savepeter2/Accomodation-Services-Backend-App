@@ -45,7 +45,7 @@ ACC_TYPE = Literal['HOTEL', 'GUEST HOUSE', 'LODGE', 'SERVICED APARTMENT',
 
 class AccomodationProviderSchema(BaseModel):
 	brand_name: str = Field(default=None)
-	phone_number: str = Field(default=None)
+	phone_num: str = Field(default=None)
 	brand_address: str = Field(default=None)
 	state: STATES_DATA_TYPE = Field(default=None)
 	city: str = Field(default=None)
@@ -54,13 +54,31 @@ class AccomodationProviderSchema(BaseModel):
 		schema_extra = {
 			"example": {
 				"brand_name": "any",
-				"phone_number": "any",
+				"phone_num": "any",
 				"brand_address": "any",
-				"state": "any",
-				"city": "any"
+				"state": "OSUN",
+				"city": "Osogbo"
 			}
-		}
+		}# Custom validator to check if the 'phone_number' is a valid phone number
+	@validator("phone_num", pre=True, always=True)
+	def check_phone_number(cls, value, values):
+		if ( 
+			(value[:4] == "+234" and len(value) == 14 and value[1:].isnumeric()) 
+	  		or (value[:2] in ['09', '08', '07'] and len(value) == 11 and value.isnumeric()) 
+			):
+			return value
 
+		else:
+			raise HTTPException(
+							status_code=status.HTTP_400_BAD_REQUEST,
+							detail={
+								"status": "error",
+								"message": "error validating phone number,invalid phone number",
+								"body": {
+									"phone_number": value
+								}
+							}
+							)		
 	# Custom validator to set the type of 'city' based on the value of 'state'
 	@validator("city", pre=True, always=True)
 	def set_city_type(cls, value, values):
@@ -94,48 +112,7 @@ class AccomodationProviderSchema(BaseModel):
 							}
 							)
 
-	# Custom validator to check if the 'phone_number' is a valid phone number
-	@validator("phone_number", pre=True, always=True)
-	def check_phone_number(cls, value, values):
-		phone_number = values.get("phone_number")
-		if phone_number:
-			if len(phone_number) != 11:
-				raise HTTPException(
-							status_code=status.HTTP_400_BAD_REQUEST,
-							detail={
-								"status": "error",
-								"message": "Invalid phone number",
-								"body": {
-									"phone_number": phone_number
-								}
-							}
-							)
-			
-			if phone_number[:2] not in ['09', '08', '07']:
-				raise HTTPException(
-							status_code=status.HTTP_400_BAD_REQUEST,
-							detail={
-								"status": "error",
-								"message": "Invalid phone number",
-								"body": {
-									"phone_number": phone_number
-								}
-							}
-							)
-			return value
-
-		else:
-			raise HTTPException(
-							status_code=status.HTTP_400_BAD_REQUEST,
-							detail={
-								"status": "error",
-								"message": "Phone number is required",
-								"body": {
-									"phone_number": value
-								}
-							}
-							)
-		
+	
 
 class OurBaseModel(BaseModel):
     class Config:

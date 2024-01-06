@@ -2,12 +2,14 @@ from app.database import Base
 from sqlalchemy import (Column, Integer, Boolean, String, 
                         
             ForeignKey, UniqueConstraint, Date, 
-            CheckConstraint, TIMESTAMP, text)
+            CheckConstraint, TIMESTAMP, text,
+            DateTime, func)
 
 from typing import Literal
 from fastapi import HTTPException, status
 from sqlalchemy.ext.mutable import MutableList
 from sqlalchemy import PickleType
+from sqlalchemy.orm import relationship
 
 
 SQLALchList = MutableList.as_mutable(PickleType)
@@ -21,10 +23,11 @@ class User(Base):
     email = Column(String,unique=True, index = True)
     password = Column(String,nullable=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    principal = Column(String, default="user")
     profile = Column(String, default = None)
-    # created_at = Column(TIMESTAMP(timezone=True), nullable=False,server_default = text('now()'))
     key = Column(String, default = None)
     key_flag = Column(Boolean, default = False)
+    profile_picture = Column(String, default = None)
 
 
 # class ResetKey(Base):
@@ -42,6 +45,12 @@ class AccomodationProvider(Base):
     city = Column(String, default=None)
     state = Column(String, default=None)
     user_id = Column(Integer, ForeignKey("User.id"))
+    acc_prov_picture = Column(String, default=None)
+    acc_prov_thumbnail_picture = Column(String, default = None)
+    profile_visits = Column(Integer, default = 0)
+    created_at = Column(DateTime(timezone=True))
+
+    # user = relationship("User", back_populates="accomodation_provider")
   
 class ServiceProvider(Base):
     __tablename__ = "Service_Provider"
@@ -69,7 +78,22 @@ class AccomodationProviderListing(Base):
     number_of_rooms = Column(Integer, default=None)
     number_of_kitchens = Column(Integer, default=None)
     number_of_bathrooms = Column(Integer, default=None)
+    reviews = Column(SQLALchList, default = [])
+    no_likes = Column(Integer, default = 0)
 
 
+class UserListingLikes(Base):
+    __tablename__ = "User_Listing_Likes"
+    id = Column(Integer, primary_key=True, autoincrement=True, index = True)
+    user_id = Column(Integer, ForeignKey("User.id"))
+    listing_id = Column(Integer, ForeignKey("Accomodation_Provider_Listing.id"))
+    liked = Column(Boolean, default = False)
 
-    
+class AccomodationProviderProfileVisitStats(Base):
+    __tablename__ = "Accomodation_Provider_Profile_Visit_Stats"
+    id = Column(Integer, primary_key=True, autoincrement=True, index = True)
+    acc_provider_id = Column(Integer, ForeignKey("Accomodation_Provider.id"))
+    user_explorer_id = Column(Integer, ForeignKey("User.id"))
+    visit_date = Column(DateTime(timezone=True))
+    profile_visit = Column(Integer, default = 0)
+

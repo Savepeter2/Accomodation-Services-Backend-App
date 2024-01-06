@@ -1,58 +1,42 @@
 from sqlalchemy.orm import Session
 from app.database import engine, get_db
 from app.deps import get_current_user
-from app.model import User, AccomodationProvider, AccomodationProviderListing
+from app.model import User, AccomodationProvider, AccomodationProviderListing, func, AccomodationProviderProfileVisitStats
 from schemas.acc_prov import (AccomodationProviderSchema, get_states,
                                get_cities, AccomodationProviderListingSchema)
 from app.utils import logger
 from schemas.user import UserSchema
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException, File, UploadFile
+from routers.user import HasPermissionTo
 from fastapi.responses import FileResponse
 from typing import Literal, List, Tuple
 import os
 from random import randint
 import uuid
 from fastapi.encoders import jsonable_encoder
+from fastapi.responses import FileResponse
 from fastapi import Form
 from schemas.acc_prov import ACC_TYPE, STATES_DATA_TYPE
 import aiofiles
 from PIL import Image
 from io import BytesIO
+import base64
 import time
 import cv2
 import re
 import numpy as np
 from skimage import io, transform
 from io import BytesIO
-
+from datetime import datetime
+import calendar
+import matplotlib.pyplot as plt
 #from fastapi.responses import JSONResponse
 
 BASEDIR = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 BASEDIR = os.path.join(BASEDIR, 'app', 'statics', 'media')
 BASEDIR = BASEDIR.replace(os.path.sep, os.path.sep + os.path.sep)
 
-print(f"basedir is : {BASEDIR}")
-
 router = APIRouter()
-
-# def make_thumbnail(file,size: tuple = (300, 200)):
-#     # Read the image using skimage
-#     img = io.imread(file, plugin='matplotlib')
-#     # Ensure that the image has 3 channels (RGB)
-#     if img.shape[-1] == 4:
-#         img = img[:, :, :3]
-#     # Resize the image
-#     resized_img = transform.resize(img, size, mode='constant')
-
-#     # Convert to uint8 for saving as PNG
-#     resized_img = (resized_img * 255).astype(np.uint8)
-
-#     # Save the resized image to BytesIO
-#     thumb_io = BytesIO()
-#     io.imsave(thumb_io, resized_img, format='png', quality=8)  # Adjust quality as needed
-#     thumb_io.seek(0)
-
-#     return thumb_io
 
 async def file_operations(file: UploadFile) -> Tuple[bytes, str, str]:
     root, ext = os.path.splitext(file.filename)
@@ -82,7 +66,52 @@ def make_thumbnail(file:str, size: tuple = (300, 200)) -> BytesIO:
     thumb_io.seek(0)
     return thumb_io
 
-async def handle_file_upload(files: List[UploadFile]) -> Tuple[str, str]:
+async def image_upload(image: UploadFile):
+    content, ext, img_dir = await file_operations(image)
+    print("the size of the image is: ", len(content))
+
+    if not os.path.exists(img_dir):
+        os.makedirs(img_dir)
+
+    filepath = os.path.join(img_dir, image.filename)
+    async with aiofiles.open(filepath, mode = 'wb') as f:
+        await f.write(content)
+
+    new_file = os.path.join(img_dir, image.filename)
+    thumbnail_name = f"thumb_{image.filename}"
+    thumbnail_name = thumbnail_name.replace(" ", "")
+    thumbnail_content = make_thumbnail(new_file)
+
+    async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
+        await f.write(thumbnail_content.read())
+    
+    image_name = image.filename.replace(" ", "")
+    
+    return image_name, thumbnail_name
+
+async def visualize_profile_visits_chart(chart_data):
+    month_labels = chart_data.get('month_labels')
+    visits_data = chart_data.get('visits_data')
+
+    plt.plot(month_labels, visits_data,marker='o')
+    plt.xlabel("Months")
+    plt.ylabel("No. of visits")
+    plt.title("Profile visits trend")
+    plt.grid(True)
+
+    # Save the chart image to a BytesIO object
+    img_buf = BytesIO()
+    plt.savefig(img_buf, format='png')
+    img_buf.seek(0)
+
+    # Encode the image as base64
+    chart_image = base64.b64encode(img_buf.read()).decode('utf-8')
+    plt.close()
+
+    return chart_image
+
+
+async def handle_files_upload(files: List[UploadFile]) -> Tuple[str, str]:
     file_names = []
     thumbnail_names = []
     for file in files:
@@ -102,8 +131,8 @@ async def handle_file_upload(files: List[UploadFile]) -> Tuple[str, str]:
         async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
             await f.write(thumbnail_content.read())
 
-        file_names.append(file.filename)
-        thumbnail_names.append(thumbnail_name)
+        file_names.append(file.filename.replace(" ", ""))
+        thumbnail_names.append(thumbnail_name.replace(" ", ""))
 
     return file_names, thumbnail_names
         
@@ -125,19 +154,65 @@ async def capitalize_city(city:str):
     if not city:
         return city
     return city.capitalize() 
-    
+   
+async def validate_phone_number(phone_num: str):
+
+    if phone_num is not None:
+        if (
+            (phone_num[:4] == "+234" and len(phone_num) == 14 and phone_num[1:].isnumeric()) 
+            or (phone_num[:2] in ['09', '08', '07'] and len(phone_num) == 11 and phone_num[1:].isnumeric())
+            ):
+                return phone_num
+        
+        else:
+             raise HTTPException(
+                  status_code= status.HTTP_400_BAD_REQUEST,
+                  detail = {
+                    "status":"error",
+                  "message": "Invalid phone number",
+                  "body": {
+                       "phone_number": phone_num
+                  }
+             }
+             )
+    else:
+        raise HTTPException(
+                  status_code= status.HTTP_400_BAD_REQUEST,
+                  detail = {
+                    "status":"error",
+                  "message": "Error Validating Phone Number, Cannot be empty",
+                  "body": {
+                       "phone_number": phone_num
+                  }
+             }
+             )
+
+
 
 @router.post("/accomodation_provider/create", tags=["Accomodation Provider"])
 async def create_accom_provider_profile(
     acc_prov_schema: AccomodationProviderSchema, 
     db: Session = Depends(get_db),
-    current_user: UserSchema = Depends(get_current_user)
+    current_user: UserSchema = Depends(get_current_user),
+    permits: list = HasPermissionTo("edit")
+
 ):
     try:
         acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == current_user.get('id')).first()
-        check_curr_user = db.query(User).filter(User.id == current_user.get('id') == AccomodationProvider.user_id).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
+        check_prov = db.query(AccomodationProvider).filter(current_user.get('id') == AccomodationProvider.user_id).first()
 
         if acc_prov is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Accomodation Provider profile already exists",
+                    "body": ""
+                }
+            )
+        
+        if check_prov is not None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -159,10 +234,11 @@ async def create_accom_provider_profile(
         
         capitalized_city = await capitalize_city(acc_prov_schema.city)
         validated_city = await validate_city(capitalized_city, acc_prov_schema.state)
+        validated_phone_num = await validate_phone_number(acc_prov_schema.phone_num)
  
         new_acc_prov = AccomodationProvider(
             brand_name = acc_prov_schema.brand_name,
-            phone_number = acc_prov_schema.phone_number,
+            phone_number = validated_phone_num,
             brand_address = acc_prov_schema.brand_address,
             state = acc_prov_schema.state,
             city = validated_city,
@@ -198,27 +274,17 @@ async def create_accom_provider_profile(
             raise e
 
 
-@router.get("/accomodation_provider/profile/{acc_id}", tags=["Accomodation Provider"])
+@router.get("/accomodation_provider/profile/me", tags=["Accomodation Provider"])
 async def get_accom_provider_profile(
-    acc_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("view")
 ):
     try:
         acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
-        check_acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == acc_id).first()
-        
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
+
         if acc_prov is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Accomodation Provider profile does not exist",
-                    "body": ""
-                }
-            )
-        
-        if check_acc_prov is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
@@ -248,17 +314,32 @@ async def get_accom_provider_profile(
         else:
             raise e
 
-@router.patch("/accomodation_provider/profile/{acc_id}", tags=["Accomodation Provider"])
+
+@router.patch("/accomodation_provider/profile/me/update", tags=["Accomodation Provider"])
 async def update_accom_provider_profile(
-    acc_id: int,
-    acc_prov_schema: AccomodationProviderSchema,
+    brand_name: str = Form(default=None) ,
+	phone_number: str = Form(default=None),
+	brand_address: str = Form(default=None),
+	state: STATES_DATA_TYPE = Form(default=None) ,
+	city: str = Form(default=None),
+    profile_picture : UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
         acc_to_update = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
-        check_acc_to_update = db.query(AccomodationProvider).filter(AccomodationProvider.id == acc_id).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
 
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "status": "error",
+                        "message": "You can't update an Accomodation Provider profile, you are not an Accomodation Provider",
+                        "body": ""
+                    }
+                )
+        
         if acc_to_update is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -269,24 +350,21 @@ async def update_accom_provider_profile(
                 }
             )
         
-        if check_acc_to_update is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Accomodation Provider profile not found",
-                    "body": ""
-                }
-            )
-        
-        capitalized_city = await capitalize_city(acc_prov_schema.city)
-        validated_city = await validate_city(capitalized_city, acc_prov_schema.state)
+        capitalized_city = await capitalize_city(city)
+        validated_city = await validate_city(capitalized_city, state)
+        image_name, thumbnail_name = await image_upload(profile_picture)
+        validated_phone_num = await validate_phone_number(phone_number)
 
-        acc_to_update.brand_name = acc_prov_schema.brand_name
-        acc_to_update.phone_number = acc_prov_schema.phone_number
-        acc_to_update.brand_address = acc_prov_schema.brand_address
-        acc_to_update.state = acc_prov_schema.state
+
+        acc_to_update.brand_name = brand_name
+        acc_to_update.phone_number = validated_phone_num
+        acc_to_update.brand_address = brand_address
+        acc_to_update.state = state
         acc_to_update.city = validated_city
+        acc_to_update.acc_prov_picture = image_name
+        acc_to_update.acc_prov_thumbnail_picture = thumbnail_name
+        acc_to_update.phone_number = validated_phone_num
+
         db.commit()
         db.refresh(acc_to_update)
 
@@ -310,86 +388,64 @@ async def update_accom_provider_profile(
             raise e
  
 
-@router.delete("/accomodation_provider/profile/{acc_id}", tags=["Accomodation Provider"])
-async def delete_accom_provider_profile(
-    acc_id: int,
+@router.get("/accomodation_provider/home", tags=["Accomodation Provider"])
+async def accom_provider_dashboard(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("view")
 ):
+    
     try:
-        acc_to_delete = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
-        check_acc_to_delete = db.query(AccomodationProvider).filter(AccomodationProvider.id == acc_id).first()
-        check_curr_user = db.query(User).filter(User.id == AccomodationProvider.user_id).first()
-
-        if acc_to_delete is None:
+        acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
+        if acc_prov is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "status": "error",
-                    "message": "Accomodation Provider profile not found",
+                    "message": "Accomodation Provider profile does not exist",
                     "body": ""
                 }
             )
         
-        if check_acc_to_delete is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Accomodation Provider profile not found",
-                    "body": ""
-                }
-            )
-        
-        #.profile = None
-        check_curr_user.profile = None
-        db.commit()
-        db.refresh(check_curr_user)
+        listings = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == acc_prov.id).all()
+        no_listings = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == acc_prov.id).count()
 
-        db.delete(check_acc_to_delete)
-        db.commit()
+        if no_listings == 0:
+            return {
+                "status": "success",
+                "message": "Accomodation Provider dashboard retrieved successfully",
+                "body": {
+                    "no_listings": no_listings,
+                    "no_likes": 0,
+                    "no_reviews": 0,
+                    "no_profile_visits": 0
+                }
+            }
+
+        no_reviews = listings[0].reviews
+        no_likes = listings[0].no_likes
+        no_profile_visits  = acc_prov.profile_visits
 
         return {
             "status": "success",
-            "message": "Accomodation Provider profile deleted successfully",
-            "body": check_acc_to_delete
+            "message": "Accomodation Provider dashboard retrieved successfully",
+            "body": {
+                "no_listings": no_listings,
+                "no_likes": no_likes,
+                "no_reviews": len(no_reviews),
+                "no_profile_visits": no_profile_visits
+            }
         }
+
     
     except Exception as e:
         if not isinstance(e, HTTPException):
-            logger.error(f"An error occured while deleting Accomodation Provider profile: {str(e)}")
+            logger.error(f"An error occured while retrieving Accomodation Provider profile: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "status": "error",
-                    "message": "An error occured while deleting Accomodation Provider profile",
-                    "body": str(e)
-                }
-            )
-        else:
-            raise e
-    
-
-@router.get("/accomodation_provider/profiles", tags=["Accomodation Provider"])
-async def get_all_accom_provider_profiles(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        acc_provs = db.query(AccomodationProvider).all()
-        return {
-            "status": "success",
-            "message": "Accomodation Provider profiles retrieved successfully",
-            "body": acc_provs
-        }
-    except Exception as e:
-        if not isinstance(e, HTTPException):
-            logger.error(f"An error occured while retrieving Accomodation Provider profiles: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "status": "error",
-                    "message": "An error occured while retrieving Accomodation Provider profiles",
+                    "message": "An error occured while retrieving Accomodation Provider profile",
                     "body": str(e)
                 }
             )
@@ -397,9 +453,75 @@ async def get_all_accom_provider_profiles(
             raise e
 
 
-#ACC PROVIDER ADDING A  LISTING 
+@router.post("/accomodation_provider/home/profile_visits_chart", tags=["Accomodation Provider"])
+async def get_profile_visits_trend_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("view")
+):
+    try:
+        acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
 
-@router.post("/accomodation_provider/listing/create", tags=["Accomodation Provider Listing"])
+        if acc_prov is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Accomodation Provider profile does not exist",
+                    "body": ""
+                }
+            )
+
+        monthly_visits = {month:0 for month in range(1,13)}
+        current_year = str(datetime.now().year)
+
+        profile_visits_data = db.execute("""
+        SELECT strftime('%m', visit_date) as visit_month,
+            COUNT(*) as no_visits
+        FROM Accomodation_Provider_Profile_Visit_Stats
+        WHERE acc_provider_id = :provider_id AND strftime('%Y', visit_date) = :current_year
+        GROUP BY strftime('%m', visit_date)
+    """, {"provider_id": acc_prov.user_id, "current_year": current_year}).fetchall()
+
+        for row in profile_visits_data:
+            month, no_visits = row
+            monthly_visits[int(month)] = no_visits
+
+        #generate labels for the x-axis (months)
+        month_labels = [calendar.month_abbr[i] for i in range(1,13)]
+        visits_data = list(monthly_visits.values())
+
+        visit_data = {
+            "month_labels": month_labels,
+            "visits_data": visits_data
+        }
+
+        chart_image = await visualize_profile_visits_chart(visit_data)
+        return {
+            "status": "success",
+            "message": "Profile visits trend data received successfully",
+            "body": {
+                "chart_image": chart_image
+            }
+        }
+
+
+    
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(f"An error occured while retrieving Accomodation Provider profile visits: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "status": "error",
+                    "message": "An error occured while retrieving Accomodation Provider profile visits",
+                    "body": str(e)
+                }
+            )
+        else:
+            raise e
+
+@router.post("/accomodation_provider/listing/create", tags=["Listing"])
 async def create_accom_provider_listing(
     accomodation_name: str = Form(default=None),
 	description: str = Form(default=None),
@@ -412,11 +534,13 @@ async def create_accom_provider_listing(
 	city: str = Form(default=None),
     accom_images: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("edit")
 ):
     
     try:
         acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
         
         if acc_prov is None:
             raise HTTPException(
@@ -427,8 +551,20 @@ async def create_accom_provider_listing(
                     "body": ""
                 }
             )
+        
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "status": "error",
+                        "message": "You can't create an Accomodation Provider listing, you are not an Accomodation Provider",
+                        "body": ""
+                    }
+                )
+        
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
+
         
         new_listing = AccomodationProviderListing(
             acc_provider_id = acc_prov.id,
@@ -443,7 +579,7 @@ async def create_accom_provider_listing(
             number_of_kitchens = number_of_kitchen
 )
         
-        file_names, thumbnail_names = await handle_file_upload(accom_images)
+        file_names, thumbnail_names = await handle_files_upload(accom_images)
         print(f"the file names which are uploaded are: {file_names}")
         print(f"the thumbnail names which are uploaded are: {thumbnail_names}")
             
@@ -476,67 +612,18 @@ async def create_accom_provider_listing(
             raise e
 
 
-@router.get("/accomodation_provider/listing/{listing_id}/images/show", tags=["Accomodation Provider Listing"])
-async def show_listing_images(
-    listing_id : int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == current_user.get('id')).first()
-        check_listing_id = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == listing_id).first()
-        
-        if check_listing is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Listing does not exist",
-                    "body": ""
-                }
-            )
-        
-        if check_listing_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Listing does not exist",
-                    "body": ""
-                }
-            )
-        listing_images = check_listing.images_thumbnail
-        images_path = []
-        for image in listing_images:
-            images_path.append(f"{BASEDIR}\\{image}")
-        print(f"images path: {images_path}")
-        # print(f"the listing images are: {listing_images}")
-        # for image in listing_images:
-        return FileResponse(images_path[1])
-        
-    except Exception as e:
-        if not isinstance(e, HTTPException):
-            logger.error(f"An error occured while retrieving listing images: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "status": "error",
-                    "message": "Listing images not found",
-                    "body": str(e)
-                }
-            )
-        else:
-            raise e
 
-@router.get("/accomodation_provider/listing/filter/{listing_id}", tags = ['Accomodation Provider Listing'])
+@router.get("/accomodation_provider/listing/filter/{listing_id}", tags = ['Listing'])
 async def get_listing(
     listing_id: int, 
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("view")
 ):
     try:
         listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == listing_id).first()
-        check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == current_user.get('id')).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
+    
         
         if listing is None:
             raise HTTPException(
@@ -548,15 +635,36 @@ async def get_listing(
                 }
             )
         
-        if check_listing is None:
+        check_acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == listing.acc_provider_id).first()
+        if check_acc_prov is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "status": "error",
-                    "message": "Accomodation Listing does not exist",
+                    "message": "There is no Accomodation Provider with this listing",
                     "body": ""
                 }
             )
+        
+        if check_acc_prov.user_id != current_user.get('id'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You can't view an Accomodation Provider listing, you are not the owner",
+                    "body": ""
+                }
+            )
+        
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail={
+                        "status": "error",
+                        "message": "You can't view an Accomodation Provider listing Image, you are not an Accomodation Provider",
+                        "body": ""
+                    }
+                )
         
         return {
             "status": "success",
@@ -578,18 +686,47 @@ async def get_listing(
         else:
             raise e
 
-@router.get("/accomodation_provider/listings/filter", tags = ['Accomodation Provider Listing'])
+@router.get("/accomodation_provider/listings/filter", tags = ['Listing'])
 async def get_all_listings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
-        listings = db.query(AccomodationProviderListing).all()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
+
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You can't view an Accomodation Provider listing Image, you are not an Accomodation Provider",
+                    "body": ""
+                }
+            )
+        check_acc_prov = db.query(AccomodationProvider). \
+        filter(AccomodationProvider.user_id == current_user.get('id')).first()
+
+        listings = db.query(AccomodationProviderListing). \
+        filter(AccomodationProviderListing.acc_provider_id == check_acc_prov.id).all()
+
+        if check_acc_prov is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Accomodation Provider does not exist",
+                    "body": ""
+                }
+            )
+
+        
         return {
             "status": "success",
             "message": "Listings retrieved successfully",
             "body": listings
         }
+
+
     except Exception as e:
         if not isinstance(e, HTTPException):
             logger.error(f"An error occured while retrieving listings: {str(e)}")
@@ -605,7 +742,7 @@ async def get_all_listings(
             raise e
 
 
-@router.patch("/accomodation_provider/listing/update/{listing_id}", tags = ['Accomodation Provider Listing'])
+@router.patch("/accomodation_provider/listing/update/{listing_id}", tags = ['Listing'])
 async def update_listing(
     listing_id: int,
     accomodation_name: str = Form(default=None),
@@ -619,11 +756,13 @@ async def update_listing(
 	city: str = Form(default=None),
     accom_images: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    permits: list = HasPermissionTo("edit")
 ):
     try:
 
         check_listing_to_update = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == listing_id).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
 
         if check_listing_to_update is None:
             raise HTTPException(
@@ -631,6 +770,26 @@ async def update_listing(
                 detail={
                     "status": "error",
                     "message": "Listing does not exist",
+                    "body": ""
+                }
+            )
+        check_acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == check_listing_to_update.acc_provider_id).first()
+        if check_acc_prov.user_id != current_user.get('id'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You can't update an Accomodation Provider listing, you are not the owner",
+                    "body": ""
+                }
+            )
+
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You can't update an Accomodation Provider listing, you are not an Accomodation Provider",
                     "body": ""
                 }
             )
@@ -648,7 +807,7 @@ async def update_listing(
         check_listing_to_update.number_of_kitchens = number_of_kitchen
         check_listing_to_update.number_of_bathrooms = number_of_bathrooms
 
-        file_names = await handle_file_upload(accom_images)
+        file_names, thumbnail_names  = await handle_files_upload(accom_images)
         check_listing_to_update.accom_images = file_names
 
         db.commit()
@@ -675,15 +834,16 @@ async def update_listing(
             raise e
 
 
-@router.delete("/accomodation_provider/listing/delete/{listing_id}", tags = ['Accomodation Provider Listing'])
+@router.delete("/accomodation_provider/listing/delete/{listing_id}", tags = ['Listing'])
 async def delete_listing(
     listing_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     try:
-        listing_to_delete = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == current_user.get('id')).first()
-        check_listing_to_delete = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == listing_id).first()
+
+        listing_to_delete = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == listing_id).first()
+        check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
         
         if listing_to_delete is None:
             raise HTTPException(
@@ -695,23 +855,34 @@ async def delete_listing(
                 }
             )
         
-        if check_listing_to_delete is None:
+        check_acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == listing_to_delete.acc_provider_id).first()
+        if check_acc_prov.user_id != current_user.get('id'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail={
                     "status": "error",
-                    "message": "Listing does not exist",
+                    "message": "You can't delete an Accomodation Provider listing, you are not the owner",
                     "body": ""
                 }
             )
         
-        db.delete(check_listing_to_delete)
+        if check_curr_user.profile != "Accomodation Provider" and check_curr_user.profile is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "You can't delete an Accomodation Provider listing, you are not an Accomodation Provider",
+                    "body": ""
+                }
+            )
+        
+        db.delete(listing_to_delete)
         db.commit()
 
         return {
             "status": "success",
             "message": "Listing deleted successfully",
-            "body": check_listing_to_delete
+            "body": listing_to_delete
         }
     
     except Exception as e:
@@ -728,47 +899,3 @@ async def delete_listing(
         else:
             raise e
     
-@router.delete("accomodation_provider/listings/delete", tags = ['Accomodation Provider Listing'])
-async def delete_all_listings(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    try:
-        listings_to_delete = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.acc_provider_id == current_user.get('id')).all()
-        if listings_to_delete is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail={
-                    "status": "error",
-                    "message": "Listings do not exist",
-                    "body": ""
-                }
-            )
-        
-        db.delete(listings_to_delete)
-        db.commit()
-
-        return {
-            "status": "success",
-            "message": "Listings deleted successfully",
-            "body": listings_to_delete
-        }
-    
-    except Exception as e:
-        if not isinstance(e, HTTPException):
-            logger.error(f"An error occured while deleting listings: {str(e)}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "status": "error",
-                    "message": "An error occured while deleting listings",
-                    "body": str(e)
-                }
-            )
-        else:
-            raise e
-
-
-
-
-
