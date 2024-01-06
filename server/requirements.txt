@@ -42,7 +42,7 @@ passlib==1.7.4
 psycopg2-binary==2.9.3
 pyasn1==0.4.8
 pycparser==2.21
-pydantic==1.9.0
+pydantic==1.10.0
 pyparsing==3.0.8
 python-dotenv==0.20.0
 python-jose==3.3.0
