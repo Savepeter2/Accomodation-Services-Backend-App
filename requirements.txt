@@ -27,10 +27,10 @@ email-validator==1.2.0
 fakeredis==1.7.1
 fastapi==0.75.2
 fastapi-mail==1.0.8
-greenlet==1.1.2
+# greenlet==1.1.2
 h11==0.12.0
 httpcore==0.14.7
-httptools==0.4.0
+# httptools==0.4.0
 httpx==0.22.0
 idna==3.3
 itsdangerous==2.1.2
