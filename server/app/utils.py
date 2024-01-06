@@ -18,11 +18,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-
-
-DB_PATH = config("DB_PATH")
-print(DB_PATH)
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}" 
+# DB_PATH = config("DB_PATH")
+# SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
+SQLALCHEMY_DATABASE_URL = config("DB_URL")
 JSWT_SECRET_KEY = config("JSWT_SECRET_KEY")
 JSWT_REFRESH_SECRET_KEY = config("JSWT_REFRESH_SECRET_KEY")
 JSWT_ALGORITHM = config("JSWT_ALGORITHM")
