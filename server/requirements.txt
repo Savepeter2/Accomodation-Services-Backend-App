@@ -8,7 +8,7 @@ pillow
 aiofiles
 fastapi-sessions
 python-decouple==3.8
-aioredis==2.0.1
+# aioredis==2.0.1
 aiosmtplib==1.1.6
 anyio==3.5.0
 asgiref==3.5.0
