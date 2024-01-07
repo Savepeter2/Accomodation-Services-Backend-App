@@ -16,9 +16,7 @@ import uvicorn
 import argparse
 import os
 
-RENDER_DIR = config("RENDER_PATH")
-RENDER_DIR = os.path.join(RENDER_DIR, "app")
-print(RENDER_DIR)
+RENDER_DIR = config("RENDER_DIR")
 #take in port as argument
 origins = ["*"]
 methods = ["*"]
