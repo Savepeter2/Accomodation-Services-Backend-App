@@ -17,7 +17,7 @@ load_dotenv(dotenv_path=Path('.')/'.env')
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-SQLALCHEMY_DATABASE_URL = config("DB_URL")
+SQLALCHEMY_DATABASE_URL = config("DB_PATH")
 JSWT_SECRET_KEY = config("JSWT_SECRET_KEY")
 JSWT_REFRESH_SECRET_KEY = config("JSWT_REFRESH_SECRET_KEY")
 JSWT_ALGORITHM = config("JSWT_ALGORITHM")
