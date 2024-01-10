@@ -4,7 +4,7 @@ from app.deps import get_current_user
 from app.model import User, AccomodationProvider, AccomodationProviderListing, func, AccomodationProviderProfileVisitStats
 from schemas.acc_prov import (AccomodationProviderSchema, get_states,
                                get_cities, AccomodationProviderListingSchema)
-from app.utils import logger
+from app.utils import logger, upload_files_cloud
 from schemas.user import UserSchema
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException, File, UploadFile
 from routers.user import HasPermissionTo
@@ -30,64 +30,8 @@ from io import BytesIO
 from datetime import datetime
 import calendar
 import matplotlib.pyplot as plt
-#from fastapi.responses import JSONResponse
-
-BASEDIR = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-BASEDIR = os.path.join(BASEDIR, 'app', 'statics', 'media')
-BASEDIR = BASEDIR.replace(os.path.sep, os.path.sep + os.path.sep)
 
 router = APIRouter()
-
-async def file_operations(file: UploadFile) -> Tuple[bytes, str, str]:
-    root, ext = os.path.splitext(file.filename)
-    # img_dir = os.path.join(BASEDIR, 'app\statics\media')
-    img_dir = BASEDIR
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
-    content = await file.read()
-    if file.content_type not in ['image/jpeg', 'image/png']:
-        raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail={
-            "status": "error",
-            "message": "Only .Jpeg or .png files are allowed",
-            "body": ""
-        }
-    )
-    return content, ext, img_dir
-    
-def make_thumbnail(file:str, size: tuple = (300, 200)) -> BytesIO:
-    img = Image.open(file)
-    rgb_im = img.convert('RGB')
-    rgb_im.thumbnail(size)
-
-    thumb_io = BytesIO()
-    rgb_im.save(thumb_io, format='PNG', quality=85)
-    thumb_io.seek(0)
-    return thumb_io
-
-async def image_upload(image: UploadFile):
-    content, ext, img_dir = await file_operations(image)
-    print("the size of the image is: ", len(content))
-
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
-
-    filepath = os.path.join(img_dir, image.filename)
-    async with aiofiles.open(filepath, mode = 'wb') as f:
-        await f.write(content)
-
-    new_file = os.path.join(img_dir, image.filename)
-    thumbnail_name = f"thumb_{image.filename}"
-    thumbnail_name = thumbnail_name.replace(" ", "")
-    thumbnail_content = make_thumbnail(new_file)
-
-    async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
-        await f.write(thumbnail_content.read())
-    
-    image_name = image.filename.replace(" ", "")
-    
-    return image_name, thumbnail_name
 
 async def visualize_profile_visits_chart(chart_data):
     month_labels = chart_data.get('month_labels')
@@ -109,33 +53,6 @@ async def visualize_profile_visits_chart(chart_data):
     plt.close()
 
     return chart_image
-
-
-async def handle_files_upload(files: List[UploadFile]) -> Tuple[str, str]:
-    file_names = []
-    thumbnail_names = []
-    for file in files:
-        content, ext, img_dir = await file_operations(file)
-
-        if not os.path.exists(img_dir):
-            os.makedirs(img_dir)
-
-        filepath = os.path.join(img_dir, file.filename)
-        async with aiofiles.open(filepath, mode = 'wb') as f:
-            await f.write(content)
-
-        new_file = os.path.join(img_dir, file.filename)
-        thumbnail_name = f"thumb_{file.filename}"
-        thumbnail_content = make_thumbnail(new_file)
-
-        async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
-            await f.write(thumbnail_content.read())
-
-        file_names.append(file.filename.replace(" ", ""))
-        thumbnail_names.append(thumbnail_name.replace(" ", ""))
-
-    return file_names, thumbnail_names
-        
             
 async def validate_city(city: str, state: str):
     state_cities = get_cities(state)
@@ -352,17 +269,18 @@ async def update_accom_provider_profile(
         
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
-        image_name, thumbnail_name = await image_upload(profile_picture)
+        # image_name, thumbnail_name = await image_upload(profile_picture)
         validated_phone_num = await validate_phone_number(phone_number)
-
+        image_url = upload_files_cloud(profile_picture)
 
         acc_to_update.brand_name = brand_name
         acc_to_update.phone_number = validated_phone_num
         acc_to_update.brand_address = brand_address
         acc_to_update.state = state
         acc_to_update.city = validated_city
-        acc_to_update.acc_prov_picture = image_name
-        acc_to_update.acc_prov_thumbnail_picture = thumbnail_name
+        acc_to_update.profile_picture_url = image_url
+        # acc_to_update.acc_prov_picture = image_name
+        # acc_to_update.acc_prov_thumbnail_picture = thumbnail_name
         acc_to_update.phone_number = validated_phone_num
 
         db.commit()
@@ -564,6 +482,7 @@ async def create_accom_provider_listing(
         
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
+        image_urls = upload_files_cloud(accom_images)
 
         
         new_listing = AccomodationProviderListing(
@@ -579,12 +498,9 @@ async def create_accom_provider_listing(
             number_of_kitchens = number_of_kitchen
 )
         
-        file_names, thumbnail_names = await handle_files_upload(accom_images)
-        print(f"the file names which are uploaded are: {file_names}")
-        print(f"the thumbnail names which are uploaded are: {thumbnail_names}")
-            
-        new_listing.accom_images = file_names
-        new_listing.images_thumbnail = thumbnail_names
+        # file_names, thumbnail_names = await handle_files_upload(accom_images) 
+        new_listing.accom_images = image_urls
+        # new_listing.images_thumbnail = thumbnail_names
 
         db.add(new_listing)
         db.commit()
@@ -796,6 +712,7 @@ async def update_listing(
         
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
+        image_urls = upload_files_cloud(accom_images)
         
         check_listing_to_update.accomodation_name = accomodation_name
         check_listing_to_update.accomodation_address = accomodation_address
@@ -806,9 +723,10 @@ async def update_listing(
         check_listing_to_update.number_of_rooms = number_of_rooms
         check_listing_to_update.number_of_kitchens = number_of_kitchen
         check_listing_to_update.number_of_bathrooms = number_of_bathrooms
+        check_listing_to_update.accom_images = image_urls
 
-        file_names, thumbnail_names  = await handle_files_upload(accom_images)
-        check_listing_to_update.accom_images = file_names
+        # file_names, thumbnail_names  = await handle_files_upload(accom_images)
+        # check_listing_to_update.accom_images = file_names
 
         db.commit()
         db.refresh(check_listing_to_update)

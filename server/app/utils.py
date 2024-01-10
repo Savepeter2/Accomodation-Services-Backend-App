@@ -11,6 +11,9 @@ from dotenv import load_dotenv
 from pathlib import Path
 import secrets
 import string
+import cloudinary
+import cloudinary.uploader as uploader
+
 
 load_dotenv(dotenv_path=Path('.')/'.env')
 
@@ -27,10 +30,18 @@ ACCESS_TOKEN_EXPIRE_DAYS = config("ACCESS_TOKEN_EXPIRE_DAYS")
 API_ENDPOINT = config("API_ENDPOINT")
 PROJECT_NAME = config("PROJECT_NAME")
 RESET_KEY = config("RESET_KEY")
+CLOUDINARY_NAME = config("CLOUDINARY_NAME")
+CLOUDINARY_API_KEY = config("CLOUDINARY_API_KEY")
+CLOUDINARY_API_SECRET = config("CLOUDINARY_API_SECRET")
 
 password_context = CryptContext(schemes=['bcrypt'], deprecated = "auto")
 serializer = URLSafeTimedSerializer(JSWT_SECRET_KEY, salt='Email_Verification_&_Forgot_Password')
-    
+
+cloudinary.config( 
+  cloud_name = CLOUDINARY_NAME, 
+  api_key = CLOUDINARY_API_KEY, 
+  api_secret = CLOUDINARY_API_SECRET 
+) 
 
 def signJWT(userID:str):
     num_days = int(ACCESS_TOKEN_EXPIRE_DAYS)*24*60*3600 #converting to seconds
@@ -148,3 +159,37 @@ def verify_email_token(token:str, max_age:int=3600):
         )
     
 
+def upload_files_cloud(images):
+
+    if isinstance(images, list):
+        image_urls = []
+        for image in images:
+            if image.content_type not in ['image/jpeg', 'image/png']:
+                raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Only .Jpeg or .png files are allowed",
+                    "body": ""
+                }
+            )
+
+            uploaded_image = uploader.upload(image.file, folder = "Accom_Services_Uploads/Listings")
+            image_url = uploaded_image.get('url')
+            image_urls.append(image_url)
+        print(image_urls)
+        return image_urls
+        
+    else:
+        if images.content_type not in ['image/jpeg', 'image/png']:
+            raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "status": "error",
+                "message": "Only .Jpeg or .png files are allowed",
+                "body": ""
+            }
+        )
+        uploaded_image = uploader.upload(images.file, folder = "Accom_Services_Uploads/Listings")
+        image_url = uploaded_image.get('url')
+        return image_url

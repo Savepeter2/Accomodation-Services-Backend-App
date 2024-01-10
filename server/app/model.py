@@ -27,13 +27,8 @@ class User(Base):
     profile = Column(String, default = None)
     key = Column(String, default = None)
     key_flag = Column(Boolean, default = False)
-    profile_picture = Column(String, default = None)
+    profile_picture_url = Column(String, default = None)
 
-
-# class ResetKey(Base):
-#     __tablename__ = "Reset_Key"
-    
-#     key = Column(String,primary_key=True, nullable=False)
 
 class AccomodationProvider(Base):
     __tablename__ = "Accomodation_Provider"
@@ -45,8 +40,9 @@ class AccomodationProvider(Base):
     city = Column(String, default=None)
     state = Column(String, default=None)
     user_id = Column(Integer, ForeignKey("User.id"))
-    acc_prov_picture = Column(String, default=None)
-    acc_prov_thumbnail_picture = Column(String, default = None)
+    profile_picture_url = Column(String, default=None)
+    # acc_prov_picture = Column(String, default=None)
+    # acc_prov_thumbnail_picture = Column(String, default = None)
     profile_visits = Column(Integer, default = 0)
     created_at = Column(DateTime(timezone=True))
 
@@ -74,7 +70,7 @@ class AccomodationProviderListing(Base):
     accomodation_state = Column(String, default=None)
     accomodation_description = Column(String, default=None)
     accom_images = Column(SQLALchList, default=[])
-    images_thumbnail = Column(SQLALchList, default=[])
+    # images_thumbnail = Column(SQLALchList, default=[])
     number_of_rooms = Column(Integer, default=None)
     number_of_kitchens = Column(Integer, default=None)
     number_of_bathrooms = Column(Integer, default=None)

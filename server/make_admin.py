@@ -3,7 +3,7 @@ import argparse
 from decouple import config
 from dotenv import load_dotenv
 
-DB_PATH = config('DB_PATH')
+DB_PATH = config('DB_DB_PATH')
 
 #pass email as argument in order to make user admin
 
