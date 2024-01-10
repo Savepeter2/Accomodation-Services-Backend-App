@@ -11,7 +11,7 @@ import os
 import aiofiles
 from PIL import Image
 from io import BytesIO
-from routers.acc_provider import BASEDIR, handle_files_upload, make_thumbnail, image_upload
+# from routers.acc_provider import BASEDIR, handle_files_upload, make_thumbnail, image_upload
 from schemas.acc_prov import ACC_TYPE
 from fastapi import Form
 from sqlalchemy import func

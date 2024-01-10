@@ -23,7 +23,7 @@ from  app.model import User
 from fastapi.responses import JSONResponse
 from schemas.user import PROFILE_DATA_TYPE
 from fastapi import UploadFile, Form, File, Request
-from routers.acc_provider import image_upload
+# from routers.acc_provider import image_upload
 from pydantic import EmailStr
 
 

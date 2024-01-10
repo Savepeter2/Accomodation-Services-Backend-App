@@ -5,7 +5,7 @@ from schemas.user import PROFILE_DATA_TYPE
 from fastapi import UploadFile, Form, File
 from sqlalchemy.orm import Session
 from app.database import engine, get_db
-from routers.acc_provider import image_upload
+# from routers.acc_provider import image_upload
 from  app.model import User
 from app.utils import get_user_info
 from app.utils import logger, upload_files_cloud

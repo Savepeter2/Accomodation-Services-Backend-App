@@ -33,61 +33,61 @@ import matplotlib.pyplot as plt
 
 #from fastapi.responses import JSONResponse
 
-BASEDIR = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-BASEDIR = os.path.join(BASEDIR, 'app', 'statics', 'media')
-BASEDIR = BASEDIR.replace(os.path.sep, os.path.sep + os.path.sep)
+# BASEDIR = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+# BASEDIR = os.path.join(BASEDIR, 'app', 'statics', 'media')
+# BASEDIR = BASEDIR.replace(os.path.sep, os.path.sep + os.path.sep)
 
 router = APIRouter()
 
-async def file_operations(file: UploadFile) -> Tuple[bytes, str, str]:
-    root, ext = os.path.splitext(file.filename)
-    # img_dir = os.path.join(BASEDIR, 'app\statics\media')
-    img_dir = BASEDIR
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
-    content = await file.read()
-    if file.content_type not in ['image/jpeg', 'image/png']:
-        raise HTTPException(
-        status_code=status.HTTP_400_BAD_REQUEST,
-        detail={
-            "status": "error",
-            "message": "Only .Jpeg or .png files are allowed",
-            "body": ""
-        }
-    )
-    return content, ext, img_dir
+# async def file_operations(file: UploadFile) -> Tuple[bytes, str, str]:
+#     root, ext = os.path.splitext(file.filename)
+#     # img_dir = os.path.join(BASEDIR, 'app\statics\media')
+#     img_dir = BASEDIR
+#     if not os.path.exists(img_dir):
+#         os.makedirs(img_dir)
+#     content = await file.read()
+#     if file.content_type not in ['image/jpeg', 'image/png']:
+#         raise HTTPException(
+#         status_code=status.HTTP_400_BAD_REQUEST,
+#         detail={
+#             "status": "error",
+#             "message": "Only .Jpeg or .png files are allowed",
+#             "body": ""
+#         }
+#     )
+#     return content, ext, img_dir
     
-def make_thumbnail(file:str, size: tuple = (300, 200)) -> BytesIO:
-    img = Image.open(file)
-    rgb_im = img.convert('RGB')
-    rgb_im.thumbnail(size)
+# def make_thumbnail(file:str, size: tuple = (300, 200)) -> BytesIO:
+#     img = Image.open(file)
+#     rgb_im = img.convert('RGB')
+#     rgb_im.thumbnail(size)
 
-    thumb_io = BytesIO()
-    rgb_im.save(thumb_io, format='PNG', quality=85)
-    thumb_io.seek(0)
-    return thumb_io
+#     thumb_io = BytesIO()
+#     rgb_im.save(thumb_io, format='PNG', quality=85)
+#     thumb_io.seek(0)
+#     return thumb_io
 
-async def image_upload(image: UploadFile):
-    content, ext, img_dir = await file_operations(image)
+# async def image_upload(image: UploadFile):
+#     content, ext, img_dir = await file_operations(image)
 
-    if not os.path.exists(img_dir):
-        os.makedirs(img_dir)
+#     if not os.path.exists(img_dir):
+#         os.makedirs(img_dir)
 
-    filepath = os.path.join(img_dir, image.filename)
-    async with aiofiles.open(filepath, mode = 'wb') as f:
-        await f.write(content)
+#     filepath = os.path.join(img_dir, image.filename)
+#     async with aiofiles.open(filepath, mode = 'wb') as f:
+#         await f.write(content)
 
-    new_file = os.path.join(img_dir, image.filename)
-    thumbnail_name = f"thumb_{image.filename}"
-    thumbnail_name = thumbnail_name.replace(" ", "")
-    thumbnail_content = make_thumbnail(new_file)
+#     new_file = os.path.join(img_dir, image.filename)
+#     thumbnail_name = f"thumb_{image.filename}"
+#     thumbnail_name = thumbnail_name.replace(" ", "")
+#     thumbnail_content = make_thumbnail(new_file)
 
-    async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
-        await f.write(thumbnail_content.read())
+#     async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
+#         await f.write(thumbnail_content.read())
     
-    image_name = image.filename.replace(" ", "")
+#     image_name = image.filename.replace(" ", "")
     
-    return image_name, thumbnail_name
+#     return image_name, thumbnail_name
 
 async def visualize_profile_visits_chart(chart_data):
     month_labels = chart_data.get('month_labels')
@@ -111,30 +111,30 @@ async def visualize_profile_visits_chart(chart_data):
     return chart_image
 
 
-async def handle_files_upload(files: List[UploadFile]) -> Tuple[str, str]:
-    file_names = []
-    thumbnail_names = []
-    for file in files:
-        content, ext, img_dir = await file_operations(file)
+# async def handle_files_upload(files: List[UploadFile]) -> Tuple[str, str]:
+#     file_names = []
+#     thumbnail_names = []
+#     for file in files:
+#         content, ext, img_dir = await file_operations(file)
 
-        if not os.path.exists(img_dir):
-            os.makedirs(img_dir)
+#         if not os.path.exists(img_dir):
+#             os.makedirs(img_dir)
 
-        filepath = os.path.join(img_dir, file.filename)
-        async with aiofiles.open(filepath, mode = 'wb') as f:
-            await f.write(content)
+#         filepath = os.path.join(img_dir, file.filename)
+#         async with aiofiles.open(filepath, mode = 'wb') as f:
+#             await f.write(content)
 
-        new_file = os.path.join(img_dir, file.filename)
-        thumbnail_name = f"thumb_{file.filename}"
-        thumbnail_content = make_thumbnail(new_file)
+#         new_file = os.path.join(img_dir, file.filename)
+#         thumbnail_name = f"thumb_{file.filename}"
+#         thumbnail_content = make_thumbnail(new_file)
 
-        async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
-            await f.write(thumbnail_content.read())
+#         async with aiofiles.open(os.path.join(img_dir, thumbnail_name), mode = 'wb') as f:
+#             await f.write(thumbnail_content.read())
 
-        file_names.append(file.filename.replace(" ", ""))
-        thumbnail_names.append(thumbnail_name.replace(" ", ""))
+#         file_names.append(file.filename.replace(" ", ""))
+#         thumbnail_names.append(thumbnail_name.replace(" ", ""))
 
-    return file_names, thumbnail_names
+#     return file_names, thumbnail_names
         
             
 async def validate_city(city: str, state: str):
