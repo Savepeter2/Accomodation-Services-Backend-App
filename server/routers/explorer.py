@@ -6,7 +6,6 @@ from schemas.user import UserSchema
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException, File, UploadFile
 from fastapi.responses import FileResponse
 from typing import Literal, List, Tuple
-from app.utils import logger
 from routers.user import HasPermissionTo
 import os
 import aiofiles
@@ -16,6 +15,7 @@ from routers.acc_provider import BASEDIR, handle_files_upload, make_thumbnail, i
 from schemas.acc_prov import ACC_TYPE
 from fastapi import Form
 from sqlalchemy import func
+from app.utils import logger
 
 
 

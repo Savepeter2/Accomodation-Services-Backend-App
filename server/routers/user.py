@@ -8,7 +8,8 @@ from app.utils import (
      API_ENDPOINT,
      PROJECT_NAME,
      generate_reset_key,
-     generate_password_key
+     generate_password_key,
+    upload_files_cloud
 
 )
 from app.acl import check_permission,valid_permissions
@@ -710,8 +711,8 @@ async def update_user_profile(
     Update a user profile, for updating first name, last name and profile picture of the user[explorer]
         """
     try:
-        check_user = db.query(User).filter(User.id == id).filter(id == current_user.get('id')).first()
-        print("current_user_id", current_user.get('id') )
+        check_user = db.query(User).filter(id == current_user.get('id')).first()
+        
         if not check_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -731,11 +732,13 @@ async def update_user_profile(
                     "body": ""
                 }
             )
-        image_name, thumbnail_name = await image_upload(profile_picture)
+        # image_name, thumbnail_name = await image_upload(profile_picture)
+        image_url = upload_files_cloud(profile_picture)
+
         check_user.first_name = first_name
         check_user.last_name = last_name
-        check_user.profile_picture = image_name
-
+        check_user.profile_picture_url = image_url
+        
         db.commit()
         db.refresh(check_user)
         

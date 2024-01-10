@@ -1,3 +1,4 @@
+cloudinary
 fastapi_permissions==0.2.7
 pandas
 imageio[pyav]
