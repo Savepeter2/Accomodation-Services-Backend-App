@@ -8,7 +8,6 @@ from decouple import config
 from app.database import engine,Base
 from routers.user import router as user_router
 from routers.acc_provider import router as acc_prov_router
-from routers.service_provider import router as serv_prov_router
 from routers.explorer import router as explorer_router
 from routers.admin import router as admin_router
 from fastapi.middleware.cors import CORSMiddleware
