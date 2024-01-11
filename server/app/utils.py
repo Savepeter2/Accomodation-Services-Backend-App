@@ -13,6 +13,7 @@ import secrets
 import string
 import cloudinary
 import cloudinary.uploader as uploader
+import hashlib
 
 
 load_dotenv(dotenv_path=Path('.')/'.env')
@@ -157,6 +158,52 @@ def verify_email_token(token:str, max_age:int=3600):
                 "message": "error verifying token",
                 "body": str(e) }
         )
+
+def password_reset_token(email:str):
+    _token_ = serializer.dumps(email, salt=JSWT_SECRET_KEY)
+    return _token_
+
+def verify_password_reset_token(token: str, max_age: int = 300):
+    try:
+        # You might want to decode the hashed token back to the original format
+        original_token = serializer.loads(token, salt=JSWT_SECRET_KEY, max_age=max_age)
+        return {
+            "status": "success",
+            "message": "Token verified successfully",
+            "body": {
+                "email": original_token
+            }
+        }
+    
+    except SignatureExpired:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "status": "error",
+                "message": "Token Expired, please reset password again",
+                "body": "Token expired"
+            }
+        )
+    
+    except BadTimeSignature:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "status": "error",
+                "message": "Invalid Token",
+                "body": "Invalid token"
+            }
+        )
+    except Exception as e:  
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail={
+                "status": "error",
+                "message": "Error verifying token",
+                "body": str(e)
+            }
+        )
+
     
 
 def upload_files_cloud(images):

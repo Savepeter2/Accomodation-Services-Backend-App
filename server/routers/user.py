@@ -9,7 +9,10 @@ from app.utils import (
      PROJECT_NAME,
      generate_reset_key,
      generate_password_key,
-    upload_files_cloud
+    upload_files_cloud,
+    password_reset_token,
+    verify_password_reset_token
+
 
 )
 from app.acl import check_permission,valid_permissions
@@ -250,11 +253,11 @@ async def resend_verification_email(
 
 @router.post('/user/forgot-password', tags=['User'])
 async def forgot_password(
-    email: EmailSchema,
+    email: EmailStr,
     db: Session = Depends(get_db)
 ):
     try:
-        user = db.query(User).filter(User.email == email.email).first()
+        user = db.query(User).filter(User.email == email).first()
         if user is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -264,16 +267,17 @@ async def forgot_password(
                     "body": ""
                 }
             )
-        reset_key = generate_password_key()
+        reset_key = password_reset_token(email)
+
         mail_body = {
-            'email': email.email,
+            'email': email,
             'project_name': PROJECT_NAME,
             'reset_key': reset_key
         }
 
         mail_status = await send_token_email(
             subject="Password Reset",
-            email_to=email.email,
+            email_to=email,
             body=mail_body,
             template='reset_password.html'
         )
@@ -314,6 +318,7 @@ async def reset_password(
     email: EmailSchema,
     new_password: str,
     confirm_password: str,
+    password_reset_token:str,
     db: Session = Depends(get_db)
 ):
     """
@@ -328,6 +333,29 @@ async def reset_password(
                 detail={
                     "status": "error",
                     "message": "User does not exist",
+                    "body": ""
+                }
+            )
+        
+        token_data = verify_password_reset_token(password_reset_token)
+        check_user = db.query(User).filter(User.email == token_data['body']['email']).first() #the token_data['body'] is the email
+
+        if not token_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Invalid password reset token",
+                    "body": ""
+                }
+            )
+        
+        if not check_user:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": f"User with this email: {check_user.email} does not exist",
                     "body": ""
                 }
             )
