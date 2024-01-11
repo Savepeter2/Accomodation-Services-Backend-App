@@ -37,7 +37,7 @@ BASEDIR = BASEDIR.replace(os.path.sep, os.path.sep + os.path.sep)
 router = APIRouter()
 
 #updating the profile of the user
-@router.patch('/user/update/{user_id}', tags=['Admin'])
+@router.patch('/admin/user/update/{user_id}', tags=['Admin'])
 async def update_user_profile(
     user_id:int,
     user_profile: PROFILE_DATA_TYPE,
@@ -100,7 +100,7 @@ async def update_user_profile(
             raise e
         
 
-@router.get("/accomodation_provider/profile/filter/{acc_id}", tags=["Admin"])
+@router.get("/admin/accomodation_provider/profile/filter/{acc_id}", tags=["Admin"])
 async def get_accom_provider_profile(
     acc_id: int,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ async def get_accom_provider_profile(
 
 
 
-@router.patch("/accomodation_provider/profile/update/{acc_prof_id}", tags=["Admin"])
+@router.patch("/admin/accomodation_provider/profile/update/{acc_prof_id}", tags=["Admin"])
 async def update_accom_provider_profile(
     acc_prof_id: int ,
     brand_name: str = Form(default=None) ,
@@ -230,7 +230,7 @@ async def update_accom_provider_profile(
             raise e
         
         
-@router.get("/accomodation_provider/filter/profiles", tags=["Admin"])
+@router.get("/admin/accomodation_provider/filter/profiles", tags=["Admin"])
 async def get_all_accom_provider_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -271,7 +271,7 @@ async def get_all_accom_provider_profiles(
             raise e
         
 
-@router.get("/accomodation_provider/{acc_id}/home", tags=["Admin"])
+@router.get("/admin/accomodation_provider/{acc_id}/home", tags=["Admin"])
 async def accom_provider_dashboard(
     acc_id: int,
     db: Session = Depends(get_db),
@@ -348,7 +348,7 @@ async def accom_provider_dashboard(
         else:
             raise e
 
-@router.delete("/accomodation_provider/profile/delete/{acc_id}", tags=["Admin"])
+@router.delete("/admin/accomodation_provider/profile/delete/{acc_id}", tags=["Admin"])
 async def delete_accom_provider_profile(
     acc_id: int,
     db: Session = Depends(get_db),
@@ -407,7 +407,7 @@ async def delete_accom_provider_profile(
             raise e
 
 
-@router.post("/accomodation_provider/{acc_id}/home/profile_visits_chart", tags=["Admin"])
+@router.post("/admin/accomodation_provider/{acc_id}/home/profile_visits_chart", tags=["Admin"])
 async def get_profile_visits_trend_data(
     acc_id: int,
     db: Session = Depends(get_db),
@@ -487,7 +487,7 @@ async def get_profile_visits_trend_data(
 
 
 
-@router.get("/accomodation_provider/listing/{listing_id}/images/show", tags=["Admin"])
+@router.get("/admin/accomodation_provider/listing/{listing_id}/images/show", tags=["Admin"])
 async def show_listing_images(
     listing_id : int,
     db: Session = Depends(get_db),
@@ -541,7 +541,7 @@ async def show_listing_images(
 
 
 
-@router.delete("/accomodation_provider/listings/delete", tags = ['Admin'])
+@router.delete("/admin/accomodation_provider/listings/delete", tags = ['Admin'])
 async def delete_all_listings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
