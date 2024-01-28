@@ -117,7 +117,7 @@ async def create_accom_provider_profile(
     try:
         acc_prov = db.query(AccomodationProvider).filter(AccomodationProvider.id == current_user.get('id')).first()
         check_curr_user = db.query(User).filter(User.id == current_user.get('id')).first()
-        check_prov = db.query(AccomodationProvider).filter(current_user.get('id') == AccomodationProvider.user_id).first()
+        check_prov = db.query(AccomodationProvider).filter(AccomodationProvider.user_id == current_user.get('id')).first()
 
         if acc_prov is not None:
             raise HTTPException(

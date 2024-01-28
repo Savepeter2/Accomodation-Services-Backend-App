@@ -725,9 +725,8 @@ async def update_permission(
         else:
             raise e
 
-@router.patch("/user/{id}/profile/update", tags=["User"])
+@router.patch("/user/me/profile/update", tags=["User"])
 async def update_user_profile(
-    id: int,
     first_name: str = Form(default=None),
     last_name: str = Form(default=None),
     profile_picture: UploadFile = File(...),
@@ -739,8 +738,7 @@ async def update_user_profile(
     Update a user profile, for updating first name, last name and profile picture of the user[explorer]
         """
     try:
-        check_user = db.query(User).filter(id == current_user.get('id')).first()
-        
+        check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         if not check_user:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
