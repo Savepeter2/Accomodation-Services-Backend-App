@@ -27,7 +27,6 @@ async def explore_all_listings(
     ):
 
     try:
-    # check_explorer = db.query(Explorer).filter(Explorer.user_id == current_user.get('id')).first()
         check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         accomodation_listings = db.query(AccomodationProviderListing) \
                                             .options(load_only("accomodation_name",
@@ -139,7 +138,7 @@ async def explore_listing_details(
     ):
 
     try:
-    # check_explorer = db.query(Explorer).filter(Explorer.user_id == current_user.get('id')).first()
+
         check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         accomodation_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == accomodation_listing_id).first()
         check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == accomodation_listing_id).first()
@@ -298,7 +297,7 @@ async def like_listing(
     ):
 
     try:
-    # check_explorer = db.query(Explorer).filter(Explorer.user_id == current_user.get('id')).first()
+    
         check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == accomodation_listing_id).first()
         check_user_listing_like = db.query(UserListingLikes).filter(UserListingLikes.user_id == current_user.get('id')).filter(UserListingLikes.listing_id == accomodation_listing_id).first()
@@ -384,8 +383,8 @@ async def add_review(
     permits: list = HasPermissionTo("edit")
     ):
 
-    # try:
-    # check_explorer = db.query(Explorer).filter(Explorer.user_id == current_user.get('id')).first()
+    try:
+    
         check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == accomodation_listing_id).first()
 
@@ -429,19 +428,19 @@ async def add_review(
             "body": check_listing
         }
     
-    # except Exception as e:
-    #     if not isinstance(e, HTTPException):
-    #         logger.error(f"An error occured while trying to add a review to a listing: {str(e)}")
-    #         raise HTTPException(
-    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #             detail={
-    #                 "status": "error",
-    #                 "message": "An error occured while trying to add a review to a listing",
-    #                 "body": str(e)
-    #             }
-    #         )
-    #     else:
-    #         raise e
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(f"An error occured while trying to add a review to a listing: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "status": "error",
+                    "message": "An error occured while trying to add a review to a listing",
+                    "body": str(e)
+                }
+            )
+        else:
+            raise e
 
 
 

@@ -492,77 +492,6 @@ async def user_logout(
         else:
             raise e
         
-# #updating the password of the user
-# @router.patch('/user/update/{user_id}', tags=['user'])
-# async def update_user(
-#     user_id:int,
-#     user:UserUpdateSchema,
-#     current_user: User = Depends(get_current_user),
-#     db: Session = Depends(get_db)
-# ):  
-#     """
-#     this endpoint is basically updating the password of the user
-#     """
-#     try:
-#         user_to_update = db.query(User).filter(User.id == user_id).first()
-
-#         if user_to_update is None:
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail={
-#                     "status": "error",
-#                     "message": "User does not exist",
-#                     "body": ""
-#                 }
-#             )
-        
-#         if not verify_password(user.old_password, user_to_update.password):
-#             logger.error("user: Incorrect login details, old password is incorrect.")
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail={
-#                     "status": "error",
-#                     "message": "Incorrect login details, old password is incorrect.",
-#                     "body": ""
-#                 }
-#             )
-#         # hash_old_password = get_hashed_password(user.old_password)
-#         elif verify_password(user.new_password, user_to_update.password):
-#             logger.error("user: new password cannot be equal to old password.")
-#             raise HTTPException(
-#                 status_code=status.HTTP_400_BAD_REQUEST,
-#                 detail={
-#                     "status": "error",
-#                     "message": "new password cannot be equal to old password.",
-#                     "body": ""
-#                 }
-#             )
-        
-#         hashed_password = get_hashed_password(user.new_password)
-#         user_to_update.password = hashed_password
-#         db.commit()
-#         db.refresh(user_to_update)
-
-#         return {
-#             "status": "success",
-#             "message": "User updated successfully",
-#             "body": get_user_info(user_to_update)
-#         }
-    
-#     except Exception as e:
-#         if not isinstance(e, HTTPException):
-#             logger.error(f"user: Error updating user {e}")
-#             raise HTTPException(
-#                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#                 detail={
-#                     "status": "error",
-#                     "message": "Error updating user",
-#                     "body": str(e)
-#                 }
-#             )
-#         else:
-#             raise e
-        
 @router.delete('/user/delete/{user_id}', tags=['User'])
 async def delete_user(
     user_id: int,
@@ -767,7 +696,6 @@ async def update_user_profile(
                     "body": ""
                 }
             )
-        # image_name, thumbnail_name = await image_upload(profile_picture)
         image_url = upload_files_cloud(profile_picture)
 
         check_user.first_name = first_name

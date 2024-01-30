@@ -41,12 +41,9 @@ class AccomodationProvider(Base):
     state = Column(String, default=None)
     user_id = Column(Integer, ForeignKey("User.id"))
     profile_picture_url = Column(String, default=None)
-    # acc_prov_picture = Column(String, default=None)
-    # acc_prov_thumbnail_picture = Column(String, default = None)
     profile_visits = Column(Integer, default = 0)
     created_at = Column(DateTime(timezone=True))
 
-    # user = relationship("User", back_populates="accomodation_provider")
   
 class ServiceProvider(Base):
     __tablename__ = "Service_Provider"
@@ -70,7 +67,6 @@ class AccomodationProviderListing(Base):
     accomodation_state = Column(String, default=None)
     accomodation_description = Column(String, default=None)
     accom_images = Column(SQLALchList, default=[])
-    # images_thumbnail = Column(SQLALchList, default=[])
     number_of_rooms = Column(Integer, default=None)
     number_of_kitchens = Column(Integer, default=None)
     number_of_bathrooms = Column(Integer, default=None)

@@ -270,7 +270,6 @@ async def update_accom_provider_profile(
         
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
-        # image_name, thumbnail_name = await image_upload(profile_picture)
         validated_phone_num = await validate_phone_number(phone_number)
         image_url = upload_files_cloud(profile_picture)
 
@@ -280,8 +279,6 @@ async def update_accom_provider_profile(
         acc_to_update.state = state
         acc_to_update.city = validated_city
         acc_to_update.profile_picture_url = image_url
-        # acc_to_update.acc_prov_picture = image_name
-        # acc_to_update.acc_prov_thumbnail_picture = thumbnail_name
         acc_to_update.phone_number = validated_phone_num
 
         db.commit()
@@ -499,9 +496,7 @@ async def create_accom_provider_listing(
             number_of_kitchens = number_of_kitchen
 )
         
-        # file_names, thumbnail_names = await handle_files_upload(accom_images) 
         new_listing.accom_images = image_urls
-        # new_listing.images_thumbnail = thumbnail_names
 
         db.add(new_listing)
         db.commit()
@@ -725,9 +720,6 @@ async def update_listing(
         check_listing_to_update.number_of_kitchens = number_of_kitchen
         check_listing_to_update.number_of_bathrooms = number_of_bathrooms
         check_listing_to_update.accom_images = image_urls
-
-        # file_names, thumbnail_names  = await handle_files_upload(accom_images)
-        # check_listing_to_update.accom_images = file_names
 
         db.commit()
         db.refresh(check_listing_to_update)

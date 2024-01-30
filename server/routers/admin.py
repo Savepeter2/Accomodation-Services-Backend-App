@@ -192,7 +192,6 @@ async def update_accom_provider_profile(
         
         capitalized_city = await capitalize_city(city)
         validated_city = await validate_city(capitalized_city, state)
-        # image_name, thumbnail_name = await image_upload(profile_picture)
         image_url = upload_files_cloud(profile_picture)
         validated_phone_num = await validate_phone_number(phone_number)
 
@@ -202,8 +201,6 @@ async def update_accom_provider_profile(
         acc_to_update.brand_address = brand_address
         acc_to_update.state = state
         acc_to_update.city = validated_city
-        # acc_to_update.acc_prov_picture = image_name
-        # acc_to_update.acc_prov_thumbnail_picture = thumbnail_name
         acc_to_update.phone_number = validated_phone_num
         acc_to_update.profile_picture_url = image_url
 
