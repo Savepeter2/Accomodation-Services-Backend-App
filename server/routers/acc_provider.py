@@ -1,7 +1,8 @@
 from sqlalchemy.orm import Session
 from app.database import engine, get_db
 from app.deps import get_current_user
-from app.model import User, AccomodationProvider, AccomodationProviderListing, func, AccomodationProviderProfileVisitStats
+from app.model import (User, AccomodationProvider, AccomodationProviderListing,
+                        func, AccomodationProviderProfileVisitStats, UserListingLikes)
 from schemas.acc_prov import (AccomodationProviderSchema, get_states,
                                get_cities, AccomodationProviderListingSchema)
 from app.utils import logger, upload_files_cloud
@@ -793,6 +794,11 @@ async def delete_listing(
                     "body": ""
                 }
             )
+        
+        check_user_listing_table = db.query(UserListingLikes).filter(UserListingLikes.listing_id == listing_id).first()
+        if check_user_listing_table is not None:
+            db.delete(check_user_listing_table)
+            db.commit()
         
         db.delete(listing_to_delete)
         db.commit()
