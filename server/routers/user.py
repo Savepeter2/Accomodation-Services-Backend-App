@@ -125,7 +125,6 @@ async def user_verification(
         token_data = verify_email_token(token)
         user = db.query(User).filter(User.email == token_data['body']['email']).first() #the token_data['body'] is the email
         reset_key = token_data['body']['reset_key']
-        print(token_data)
 
         if not token_data:
             raise HTTPException(
@@ -390,6 +389,15 @@ async def user_login(
                 detail={
                     "status": "error",
                     "message": "Incorrect login details, email does not exist. Please signup.",
+                    "body": ""
+                }
+            )
+        if user.is_verified == False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Please verify your email to login",
                     "body": ""
                 }
             )
