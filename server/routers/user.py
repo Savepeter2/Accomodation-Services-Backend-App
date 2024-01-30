@@ -421,6 +421,15 @@ async def user_login(
                     "body": ""
                 }
             )
+        if user.is_verified == False:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail={
+                    "status": "error",
+                    "message": "Please verify your email to login",
+                    "body": ""
+                }
+            )
         hashed_password = user.password
         if not verify_password(login_data.password, hashed_password):
             logger.error("user: Incorrect login details, old password is incorrect.")
