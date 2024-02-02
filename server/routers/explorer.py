@@ -34,7 +34,8 @@ async def explore_all_listings(
                                                                "accomodation_state",
                                                                "no_likes",
                                                                "number_of_rooms",
-                                                               "accomodation_type")).all()
+                                                               "accomodation_type",
+                                                               "accom_images")).all()
 
         if not check_user:
             raise HTTPException(
@@ -90,7 +91,8 @@ async def filter_listings(
                                                                "accomodation_state",
                                                                "no_likes",
                                                                "number_of_rooms",
-                                                               "accomodation_type")).all()
+                                                               "accomodation_type",
+                                                               "accom_images")).all()
 
 
         if not check_user:
