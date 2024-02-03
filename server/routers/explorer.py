@@ -36,7 +36,8 @@ async def explore_all_listings(
                                                                "accomodation_state",
                                                                "no_likes",
                                                                "number_of_rooms",
-                                                               "accomodation_type")).all()
+                                                               "accomodation_type",
+                                                               "accom_images")).all()
 
         if not check_user:
             raise HTTPException(
@@ -92,7 +93,8 @@ async def filter_listings(
                                                                "accomodation_state",
                                                                "no_likes",
                                                                "number_of_rooms",
-                                                               "accomodation_type")).all()
+                                                               "accomodation_type",
+                                                               "accom_images")).all()
 
 
         if not check_user:
@@ -385,10 +387,11 @@ async def add_review(
     permits: list = HasPermissionTo("edit")
     ):
 
-    # try:
+    try:
     # check_explorer = db.query(Explorer).filter(Explorer.user_id == current_user.get('id')).first()
         check_user = db.query(User).filter(User.id == current_user.get('id')).first()
         check_listing = db.query(AccomodationProviderListing).filter(AccomodationProviderListing.id == accomodation_listing_id).first()
+        
 
         if not check_user:
             raise HTTPException(
@@ -419,6 +422,16 @@ async def add_review(
                         "body": ""
                     }
                 )
+        
+        explorer_details = {
+            "reviewer_id": check_user.id,
+            "reviewer_first_name": check_user.first_name ,
+            "reviewer_last_name": check_user.last_name,
+            "reviewer_email": check_user.email,
+            "reviewer_profile": check_user.profile,
+            "reviewer_profile_pic": check_user.profile_picture_url
+        }
+
         reviews = check_listing.reviews
         reviews.append(review)
         db.commit()
@@ -427,22 +440,24 @@ async def add_review(
         return {
             "status": "success",
             "message": "Review added",
-            "body": check_listing
+            "body": {"listing_details": check_listing , 
+                     "reviewer_details": explorer_details
+        }
         }
     
-    # except Exception as e:
-    #     if not isinstance(e, HTTPException):
-    #         logger.error(f"An error occured while trying to add a review to a listing: {str(e)}")
-    #         raise HTTPException(
-    #             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    #             detail={
-    #                 "status": "error",
-    #                 "message": "An error occured while trying to add a review to a listing",
-    #                 "body": str(e)
-    #             }
-    #         )
-    #     else:
-    #         raise e
+    except Exception as e:
+        if not isinstance(e, HTTPException):
+            logger.error(f"An error occured while trying to add a review to a listing: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "status": "error",
+                    "message": "An error occured while trying to add a review to a listing",
+                    "body": str(e)
+                }
+            )
+        else:
+            raise e
 
 
 
