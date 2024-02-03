@@ -419,6 +419,16 @@ async def add_review(
                         "body": ""
                     }
                 )
+        
+        explorer_details = {
+            "reviewer_id": check_user.id,
+            "reviewer_first_name": check_user.first_name ,
+            "reviewer_last_name": check_user.last_name,
+            "reviewer_email": check_user.email,
+            "reviewer_profile": check_user.profile,
+            "reviewer_profile_pic": check_user.profile_picture_url
+        }
+
         reviews = check_listing.reviews
         reviews.append(review)
         db.commit()
@@ -427,7 +437,10 @@ async def add_review(
         return {
             "status": "success",
             "message": "Review added",
-            "body": check_listing
+            "body": {
+                "listing": check_listing,
+                "reviewer_details": explorer_details
+            }
         }
     
     except Exception as e:
