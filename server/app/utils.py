@@ -223,7 +223,7 @@ def upload_files_cloud(images):
             uploaded_image = uploader.upload(image.file, folder = "Accom_Services_Uploads/Listings")
             image_url = uploaded_image.get('url')
             image_urls.append(image_url)
-        print(image_urls)
+        
         return image_urls
         
     else:

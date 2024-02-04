@@ -654,10 +654,10 @@ async def get_all_listings(
         else:
             raise e
 
-def get_upload_files(files_list: List[Union[UploadFile, str]] = File(None)):
-    if isinstance(files_list, str):
-        return []
-    return files_list
+# def get_upload_files(files_list: List[Union[UploadFile, str]] = File(None)):
+#     if isinstance(files_list, str):
+#         return []
+#     return files_list
 
 @router.patch("/accomodation_provider/listing/update/{listing_id}", tags = ['Listing'])
 async def update_listing(
@@ -671,7 +671,7 @@ async def update_listing(
 	number_of_bathrooms: int = Form(default=None),
 	state: str = Form(default=None),
 	city: str = Form(default=None),
-    accom_images: List[Union[UploadFile, str]] = Depends(get_upload_files),
+    accom_images: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     permits: list = HasPermissionTo("edit")
