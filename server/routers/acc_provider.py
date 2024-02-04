@@ -31,6 +31,7 @@ from io import BytesIO
 from datetime import datetime
 import calendar
 import matplotlib.pyplot as plt
+from typing import Union
 
 router = APIRouter()
 
@@ -240,7 +241,7 @@ async def update_accom_provider_profile(
 	brand_address: str = Form(default=None),
 	state: STATES_DATA_TYPE = Form(default=None) ,
 	city: str = Form(default=None),
-    profile_picture : Optional[UploadFile] = File(...),
+    profile_picture : Optional[UploadFile] = File(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -653,6 +654,10 @@ async def get_all_listings(
         else:
             raise e
 
+def get_upload_files(files_list: List[Union[UploadFile, str]] = File(None)):
+    if isinstance(files_list, str):
+        return []
+    return files_list
 
 @router.patch("/accomodation_provider/listing/update/{listing_id}", tags = ['Listing'])
 async def update_listing(
@@ -666,7 +671,7 @@ async def update_listing(
 	number_of_bathrooms: int = Form(default=None),
 	state: STATES_DATA_TYPE = Form(default=None),
 	city: str = Form(default=None),
-    accom_images: Optional[List[UploadFile]] = File(...),
+    accom_images: List[Union[UploadFile, str]] = Depends(get_upload_files),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     permits: list = HasPermissionTo("edit")
