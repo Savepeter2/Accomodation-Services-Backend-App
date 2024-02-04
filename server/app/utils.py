@@ -228,7 +228,9 @@ def upload_files_cloud(images):
         return image_urls
         
     else:
-        if images.content_type not in ['image/jpeg', 'image/png']:
+        if images is None:
+            return None
+        elif images.content_type not in ['image/jpeg', 'image/png']:
             raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={
