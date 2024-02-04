@@ -10,7 +10,7 @@ from schemas.user import UserSchema
 from fastapi import APIRouter, Body, Depends, status, Response, HTTPException, File, UploadFile
 from routers.user import HasPermissionTo
 from fastapi.responses import FileResponse
-from typing import Literal, List, Tuple
+from typing import Literal, List, Tuple, Optional
 import os
 from random import randint
 import uuid
@@ -150,8 +150,8 @@ async def create_accom_provider_profile(
                     }
                 )
         
-        capitalized_city = await capitalize_city(acc_prov_schema.city)
-        validated_city = await validate_city(capitalized_city, acc_prov_schema.state)
+        # capitalized_city = await capitalize_city(acc_prov_schema.city) #FE SAID I SHOULD REMOVE THE RESTRICTION ON CITY
+        # validated_city = await validate_city(capitalized_city, acc_prov_schema.state)
         validated_phone_num = await validate_phone_number(acc_prov_schema.phone_num)
  
         new_acc_prov = AccomodationProvider(
@@ -159,7 +159,7 @@ async def create_accom_provider_profile(
             phone_number = validated_phone_num,
             brand_address = acc_prov_schema.brand_address,
             state = acc_prov_schema.state,
-            city = validated_city,
+            city = acc_prov_schema.city,
             user_id = current_user.get('id')
         )
 
@@ -240,7 +240,7 @@ async def update_accom_provider_profile(
 	brand_address: str = Form(default=None),
 	state: STATES_DATA_TYPE = Form(default=None) ,
 	city: str = Form(default=None),
-    profile_picture : UploadFile = File(...),
+    profile_picture : Optional[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -268,8 +268,8 @@ async def update_accom_provider_profile(
                 }
             )
         
-        capitalized_city = await capitalize_city(city)
-        validated_city = await validate_city(capitalized_city, state)
+        # capitalized_city = await capitalize_city(city)
+        # validated_city = await validate_city(capitalized_city, state)
         validated_phone_num = await validate_phone_number(phone_number)
         image_url = upload_files_cloud(profile_picture)
 
@@ -277,7 +277,7 @@ async def update_accom_provider_profile(
         acc_to_update.phone_number = validated_phone_num
         acc_to_update.brand_address = brand_address
         acc_to_update.state = state
-        acc_to_update.city = validated_city
+        acc_to_update.city = city
         acc_to_update.profile_picture_url = image_url
         acc_to_update.phone_number = validated_phone_num
 
@@ -666,7 +666,7 @@ async def update_listing(
 	number_of_bathrooms: int = Form(default=None),
 	state: STATES_DATA_TYPE = Form(default=None),
 	city: str = Form(default=None),
-    accom_images: List[UploadFile] = File(...),
+    accom_images: Optional[List[UploadFile]] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     permits: list = HasPermissionTo("edit")
@@ -706,15 +706,15 @@ async def update_listing(
                 }
             )
         
-        capitalized_city = await capitalize_city(city)
-        validated_city = await validate_city(capitalized_city, state)
+        # capitalized_city = await capitalize_city(city)
+        # validated_city = await validate_city(capitalized_city, state)
         image_urls = upload_files_cloud(accom_images)
         
         check_listing_to_update.accomodation_name = accomodation_name
         check_listing_to_update.accomodation_address = accomodation_address
         check_listing_to_update.accomodation_type = accomodation_type
         check_listing_to_update.accomodation_state = state
-        check_listing_to_update.accomodation_city = validated_city
+        check_listing_to_update.accomodation_city = city
         check_listing_to_update.accomodation_description = description
         check_listing_to_update.number_of_rooms = number_of_rooms
         check_listing_to_update.number_of_kitchens = number_of_kitchen
