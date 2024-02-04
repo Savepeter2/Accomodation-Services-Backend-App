@@ -207,9 +207,7 @@ def verify_password_reset_token(token: str, max_age: int = 300):
     
 
 def upload_files_cloud(images):
-    if images is None:
-        return None
-    elif isinstance(images, list):
+    if isinstance(images, list):
         image_urls = []
         for image in images:
             if image.content_type not in ['image/jpeg', 'image/png']:
@@ -231,9 +229,7 @@ def upload_files_cloud(images):
     else:
         if images is None:
             return None
-        elif images == "":
-            return None
-        elif images == []:
+        elif isinstance(images, str):
             return None
         elif images.content_type not in ['image/jpeg', 'image/png']:
             raise HTTPException(

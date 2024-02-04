@@ -239,9 +239,9 @@ async def update_accom_provider_profile(
     brand_name: str = Form(default=None) ,
 	phone_number: str = Form(default=None),
 	brand_address: str = Form(default=None),
-	state: STATES_DATA_TYPE = Form(default=None) ,
+	state: str = Form(default=None) ,
 	city: str = Form(default=None),
-    profile_picture : Optional[UploadFile] = File(default=None),
+    profile_picture : UploadFile = File(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -447,7 +447,7 @@ async def create_accom_provider_listing(
 	number_of_rooms: int = Form(default=None),
 	number_of_kitchen: int = Form(default=None),
 	number_of_bathrooms: int = Form(default=None),
-	state: STATES_DATA_TYPE = Form(default=None),
+	state: str = Form(default=None),
 	city: str = Form(default=None),
     accom_images: List[UploadFile] = File(...),
     db: Session = Depends(get_db),
@@ -479,8 +479,8 @@ async def create_accom_provider_listing(
                     }
                 )
         
-        capitalized_city = await capitalize_city(city)
-        validated_city = await validate_city(capitalized_city, state)
+        # capitalized_city = await capitalize_city(city)
+        # validated_city = await validate_city(capitalized_city, state)
         image_urls = upload_files_cloud(accom_images)
 
         
@@ -490,7 +490,7 @@ async def create_accom_provider_listing(
             accomodation_name = accomodation_name,
             accomodation_address = accomodation_address,
             accomodation_state = state,
-            accomodation_city = validated_city,
+            accomodation_city = city,
             accomodation_description = description,
             number_of_rooms = number_of_rooms,
             number_of_bathrooms = number_of_bathrooms,
@@ -669,7 +669,7 @@ async def update_listing(
 	number_of_rooms: int = Form(default=None),
 	number_of_kitchen: int = Form(default=None),
 	number_of_bathrooms: int = Form(default=None),
-	state: STATES_DATA_TYPE = Form(default=None),
+	state: str = Form(default=None),
 	city: str = Form(default=None),
     accom_images: List[Union[UploadFile, str]] = Depends(get_upload_files),
     db: Session = Depends(get_db),
