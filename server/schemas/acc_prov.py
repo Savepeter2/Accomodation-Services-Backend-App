@@ -47,7 +47,7 @@ class AccomodationProviderSchema(BaseModel):
 	brand_name: str = Field(default=None)
 	phone_num: str = Field(default=None)
 	brand_address: str = Field(default=None)
-	state: STATES_DATA_TYPE = Field(default=None)
+	state: str = Field(default=None)
 	city: str = Field(default=None)
 
 	class Config:
@@ -56,7 +56,7 @@ class AccomodationProviderSchema(BaseModel):
 				"brand_name": "any",
 				"phone_num": "any",
 				"brand_address": "any",
-				"state": "OSUN",
+				"state": "any",
 				"city": "Osogbo"
 			}
 		}# Custom validator to check if the 'phone_number' is a valid phone number
@@ -79,38 +79,38 @@ class AccomodationProviderSchema(BaseModel):
 								}
 							}
 							)		
-	# Custom validator to set the type of 'city' based on the value of 'state'
-	@validator("city", pre=True, always=True)
-	def set_city_type(cls, value, values):
-		state_value = values.get("state")
-		if state_value:
-			state_cities = get_cities(state_value)
-			if value in state_cities:
-				return value
-			else:
-				raise HTTPException(
-                            status_code=status.HTTP_400_BAD_REQUEST,
-                            detail={
-                                "status": "error",
-                                "message": "City not found in state",
-                                "body": {
-                                    "state": state_value,
-									"city": value
-								}
-                            }
-                            )
-		else:
-			raise HTTPException(
-							status_code=status.HTTP_400_BAD_REQUEST,
-							detail={
-								"status": "error",
-								"message": "State not found",
-								"body": {
-									"state": state_value,
-									"city": value
-								}
-							}
-							)
+	# # Custom validator to set the type of 'city' based on the value of 'state'
+	# @validator("city", pre=True, always=True)
+	# def set_city_type(cls, value, values):
+	# 	state_value = values.get("state")
+	# 	if state_value:
+	# 		state_cities = get_cities(state_value)
+	# 		if value in state_cities:
+	# 			return value
+	# 		else:
+	# 			raise HTTPException(
+    #                         status_code=status.HTTP_400_BAD_REQUEST,
+    #                         detail={
+    #                             "status": "error",
+    #                             "message": "City not found in state",
+    #                             "body": {
+    #                                 "state": state_value,
+	# 								"city": value
+	# 							}
+    #                         }
+    #                         )
+	# 	else:
+	# 		raise HTTPException(
+	# 						status_code=status.HTTP_400_BAD_REQUEST,
+	# 						detail={
+	# 							"status": "error",
+	# 							"message": "State not found",
+	# 							"body": {
+	# 								"state": state_value,
+	# 								"city": value
+	# 							}
+	# 						}
+	# 						)
 
 	
 
