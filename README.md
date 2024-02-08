@@ -35,6 +35,21 @@ Deployed API URL: https://accom-services-app.onrender.com/docs#/
 
 ## User
 
+| Field Name          | Type     | Constraints         | Description                          |
+|---------------------|----------|---------------------|--------------------------------------|
+| id                  | Integer  | Primary Key, Autoincrement, Index | Unique identifier for each user    |
+| first_name          | String   | Default: None       | First name of the user               |
+| last_name           | String   | Default: None       | Last name of the user                |
+| email               | String   | Unique, Index       | Unique email address of the user     |
+| password            | String   | Not Null            | Password of the user                 |
+| is_verified         | Boolean  | Default: False, Not Null | Indicates if the user's email is verified |
+| principal           | String   | Default: user       | Principal role of the user           |
+| profile             | String   | Default: None       | User's profile information           |
+| key                 | String   | Default: None       | Key associated with the user         |
+| key_flag            | Boolean  | Default: False      | Flag indicating the presence of a key |
+| profile_picture_url | String   | Default: None       | URL of the user's profile picture    |
+
+
 ### SignUp
 
 **POST** /user/signup
@@ -257,6 +272,20 @@ To integrate the Accommodation Provider endpoints into your GitHub README, you c
 
 # Accommodation Provider Endpoints
 
+| Field Name          | Type     | Constraints                | Description                                   |
+|---------------------|----------|----------------------------|-----------------------------------------------|
+| id                  | Integer  | Primary Key, Autoincrement, Index | Unique identifier for each accommodation provider |
+| brand_name          | String   | Default: None              | Name of the accommodation provider's brand   |
+| phone_number        | String   | Default: None, Unique      | Phone number of the accommodation provider  |
+| brand_address       | String   | Default: None              | Address of the accommodation provider's brand|
+| city                | String   | Default: None              | City where the accommodation provider is located |
+| state               | String   | Default: None              | State where the accommodation provider is located |
+| user_id             | Integer  | Foreign Key ("User.id")    | ID of the user associated with this provider |
+| profile_picture_url | String   | Default: None              | URL of the accommodation provider's profile picture |
+| profile_visits      | Integer  | Default: 0                 | Number of visits to the provider's profile   |
+| created_at          | DateTime | Timezone=True             | Date and time when the provider was created  |
+
+
 ## Create Accommodation Provider Profile
 
 **GET** /accomodation_provider/create
@@ -361,6 +390,24 @@ curl --location 'https://accom-services-app.onrender.com/accomodation_provider/h
 ```
 
 # Listings Endpoints
+
+| Field Name               | Type     | Constraints                      | Description                                            |
+|--------------------------|----------|----------------------------------|--------------------------------------------------------|
+| id                       | Integer  | Primary Key, Autoincrement, Index| Unique identifier for each accommodation listing      |
+| acc_provider_id          | Integer  | Foreign Key ("Accomodation_Provider.id") | ID of the accommodation provider associated with this listing |
+| accommodation_type       | String   | Default: None                   | Type of accommodation (e.g., apartment, house)        |
+| accommodation_name       | String   | Default: None                   | Name of the accommodation                             |
+| accommodation_address    | String   | Default: None                   | Address of the accommodation                          |
+| accommodation_city       | String   | Default: None                   | City where the accommodation is located               |
+| accommodation_state      | String   | Default: None                   | State where the accommodation is located              |
+| accommodation_description| String   | Default: None                   | Description of the accommodation                      |
+| accommodation_images     | List     | Default: []                     | List of image URLs associated with the accommodation |
+| number_of_rooms          | Integer  | Default: None                   | Number of rooms in the accommodation                  |
+| number_of_kitchens       | Integer  | Default: None                   | Number of kitchens in the accommodation               |
+| number_of_bathrooms      | Integer  | Default: None                   | Number of bathrooms in the accommodation              |
+| reviews                  | List     | Default: []                     | List of reviews associated with the accommodation    |
+| no_likes                 | Integer  | Default: 0                      | Number of likes for the accommodation                 |
+
 
 This section outlines the endpoints related to managing listings within the Accommodation Service API.
 
