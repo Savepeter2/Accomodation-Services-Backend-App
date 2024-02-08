@@ -27,7 +27,7 @@ This is an API for an Accommodation Service App.
 
 
 
-Deployed API URL: You can test the endpoints here on swagger: https://accom-services-app.onrender.com/docs#/
+You can test the endpoints here, Deployed API URL: https://accom-services-app.onrender.com/docs#/
 
 
 
