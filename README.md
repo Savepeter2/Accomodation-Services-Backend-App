@@ -26,6 +26,11 @@ This is an API for an Accommodation Service App.
 13.	When an explorer views a particular listing posted by an accommodation provider, and the explorer likes the listing, the total number of likes the accommodation provider has increases. When the explorer views the profile, the provider's total number of profile visits increases. When the explorer adds a review, the total number of reviews also increases.
 
 
+
+Deployed API URL: https://accom-services-app.onrender.com/docs#/
+
+
+
 # Accommodation Service API Documentation
 
 ## User
